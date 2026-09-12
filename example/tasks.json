@@ -1,0 +1,45 @@
+{
+  "week": "2026-W38",
+  "week_start": "2026-09-14",
+  "week_end": "2026-09-18",
+  "workstreams": ["Platform", "Customer Onboarding", "Internal"],
+  "generated_from": "example data — replace with your own",
+  "notes": [
+    "Anything worth knowing about the week goes here. Holidays, who is away."
+  ],
+  "tasks": [
+    {
+      "key": "example-write-the-plan",
+      "title": "Write the rollout plan",
+      "detail": "Ops asked for it on Friday and have had no answer.",
+      "workstream": "Platform",
+      "priority": "high",
+      "due": "2026-09-15",
+      "status": "todo",
+      "source": "email",
+      "refs": [{ "label": "PROJ-101", "url": "https://example.atlassian.net/browse/PROJ-101" }]
+    },
+    {
+      "key": "example-chase-access",
+      "title": "Chase the access request",
+      "detail": "Blocked on Sam in IT. Raised Tuesday, no reply.",
+      "workstream": "Customer Onboarding",
+      "priority": "medium",
+      "due": "2026-09-16",
+      "status": "blocked",
+      "source": "teams",
+      "refs": []
+    },
+    {
+      "key": "example-update-runbook",
+      "title": "Update the on-call runbook",
+      "detail": "Two steps changed after the last release.",
+      "workstream": "Internal",
+      "priority": "low",
+      "due": null,
+      "status": "todo",
+      "source": "jira",
+      "refs": []
+    }
+  ]
+}

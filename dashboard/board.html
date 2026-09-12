@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Week Action Points</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f6f4;
+    --surface: #ffffff;
+    --surface-2: #f0efec;
+    --column: #eeece8;
+    --border: #e0ded8;
+    --text: #1c1b19;
+    --muted: #6d6a63;
+    --accent: #9a5b2c;
+    --accent-soft: #f7ece2;
+    --high: #b4462c;
+    --medium: #9a7b2c;
+    --done: #4a7c59;
+    --blocked: #a03c3c;
+    --doing: #9a5b2c;
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161614;
+      --surface: #242321;
+      --surface-2: #2c2b28;
+      --column: #1d1c1a;
+      --border: #35332f;
+      --text: #eceae5;
+      --muted: #9c988f;
+      --accent: #d69a6a;
+      --accent-soft: #33261c;
+      --high: #e2795c;
+      --medium: #d4b45f;
+      --done: #7fb68e;
+      --blocked: #e07a7a;
+      --doing: #d69a6a;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 28px 20px 40px; }
+
+  h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 13.5px; margin: 0 0 14px; }
+  .sub code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+
+  .bar { height: 5px; border-radius: 99px; background: var(--surface-2); overflow: hidden; margin: 12px 0 6px; }
+  .bar > i { display: block; height: 100%; background: var(--done); transition: width .3s; }
+  .bar-label { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+
+  details.notes {
+    background: var(--accent-soft); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 10px 14px; margin-bottom: 16px; font-size: 13.5px;
+  }
+  details.notes summary { cursor: pointer; color: var(--muted); font-weight: 500; }
+  details.notes ul { margin: 8px 0 2px; padding-left: 18px; }
+  details.notes li + li { margin-top: 4px; }
+
+  .offline { border: 1px solid var(--high); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 20px; }
+  .offline h2 { margin: 0 0 8px; font-size: 16px; color: var(--high); }
+  .offline p { margin: 0 0 8px; font-size: 14px; }
+  .offline code { display: inline-block; background: var(--surface-2); padding: 2px 7px; border-radius: 5px; font-size: 13px; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 18px; }
+  .chip {
+    border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+    border-radius: 99px; padding: 4px 12px; font-size: 12.5px; cursor: pointer; font-family: inherit;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--text); }
+  .chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--bg); font-weight: 500; }
+
+  /* ---- board ---- */
+  .board { display: grid; grid-template-columns: repeat(4, minmax(240px, 1fr)); gap: 12px; align-items: start; }
+  @media (max-width: 900px) {
+    .board { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 82vw; overflow-x: auto; padding-bottom: 12px; scroll-snap-type: x mandatory; }
+    .col { scroll-snap-align: start; }
+  }
+
+  .col {
+    background: var(--column); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 10px; min-height: 140px;
+  }
+  .col.over { border-color: var(--accent); background: var(--accent-soft); }
+  .col > header {
+    display: flex; align-items: center; gap: 7px; padding: 2px 4px 10px;
+    font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; color: var(--muted);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 99px; background: var(--muted); flex: none; }
+  .col[data-col="doing"] .dot { background: var(--doing); }
+  .col[data-col="blocked"] .dot { background: var(--blocked); }
+  .col[data-col="done"] .dot { background: var(--done); }
+  .count { margin-left: auto; font-size: 11.5px; background: var(--surface-2); border-radius: 99px; padding: 1px 8px; letter-spacing: 0; }
+  .empty { color: var(--muted); font-size: 12.5px; padding: 10px 4px; font-style: italic; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--ws, var(--border));
+    border-radius: 8px; padding: 10px 11px; margin-bottom: 8px; cursor: grab;
+  }
+  .card:active { cursor: grabbing; }
+  .card.dragging { opacity: .4; }
+  .card[data-orphan="true"] { border-style: dashed; cursor: default; }
+
+  .card h3 { margin: 0 0 6px; font-size: 13.5px; font-weight: 500; line-height: 1.4; }
+  .col[data-col="done"] .card h3 { text-decoration: line-through; color: var(--muted); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 11px; }
+  .tag { border-radius: 4px; padding: 1px 6px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+  .tag.p-high { color: var(--high); border-color: color-mix(in srgb, var(--high) 35%, transparent); }
+  .tag.p-medium { color: var(--medium); border-color: color-mix(in srgb, var(--medium) 35%, transparent); }
+  .tag.due-soon { color: var(--high); font-weight: 600; border-color: color-mix(in srgb, var(--high) 35%, transparent); }
+  .tag.ws { color: var(--ws); border-color: color-mix(in srgb, var(--ws) 40%, transparent); }
+  .tag a { color: var(--accent); text-decoration: none; }
+  .tag a:hover { text-decoration: underline; }
+
+  .move { margin-left: auto; display: flex; gap: 2px; }
+  .move button {
+    font: inherit; font-size: 12px; line-height: 1; width: 20px; height: 20px; cursor: pointer;
+    border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--muted);
+    display: grid; place-items: center;
+  }
+  .move button:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
+  .move button:disabled { opacity: .3; cursor: default; }
+
+  .card .body { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
+  .card .detail { color: var(--muted); font-size: 12.5px; margin: 0 0 8px; }
+  .note {
+    width: 100%; resize: vertical; min-height: 32px; font: inherit; font-size: 12.5px;
+    color: var(--text); background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 8px;
+  }
+  .note::placeholder { color: var(--muted); }
+  .note:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .hint { font-size: 11px; color: var(--muted); margin: 6px 0 0; }
+
+  .toast {
+    position: fixed; bottom: 14px; right: 16px; font-size: 12px; color: var(--muted);
+    background: var(--surface); border: 1px solid var(--border); padding: 5px 11px;
+    border-radius: 99px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 60vw;
+  }
+  .toast.show { opacity: 1; }
+  .toast.bad { color: var(--high); border-color: var(--high); }
+
+  footer { margin-top: 28px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+  @media print {
+    .filters, .move, .note, footer, details.notes { display: none !important; }
+    body { background: #fff; }
+    .board { grid-template-columns: repeat(4, 1fr); }
+    .card { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Week action points</h1>
+  <p class="sub" id="sub">Loading…</p>
+  <div class="bar" id="barBox" hidden><i id="bar" style="width:0%"></i></div>
+  <div class="bar-label" id="barLabel"></div>
+
+  <div class="offline" id="offline" hidden>
+    <h2>The board isn't running</h2>
+    <p>This page reads and writes your tasks in <strong>Home.md</strong>, which needs the
+       local helper running. Opening the file directly can't reach it.</p>
+    <p>Double-click <code>Open Week Dashboard.command</code> in your vault folder, or run:</p>
+    <p><code>python3 "99 Meta/task-dashboard/homedash.py"</code></p>
+    <p class="sub" id="offlineWhy"></p>
+  </div>
+
+  <details class="notes" id="notes" hidden><summary>Worth knowing this week</summary></details>
+  <div class="filters" id="filters" hidden></div>
+  <div class="board" id="board"></div>
+  <footer id="foot" hidden></footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const COLUMNS = [
+  { id: "todo",    label: "To do" },
+  { id: "doing",   label: "Doing" },
+  { id: "blocked", label: "Blocked" },
+  { id: "done",    label: "Done" },
+];
+// Workstreams come from tasks.json; colours are assigned in that order.
+const PALETTE = ["#c2703a", "#9a5b8c", "#3f7a9a", "#b4462c",
+                 "#4a7c59", "#7a6aa8", "#6d6a63", "#8c6d3f"];
+let WS = {};
+
+let tasks = [];
+let meta = {};
+let filterWs = "all";
+let expanded = new Set();
+
+const $ = (id) => document.getElementById(id);
+
+function toast(msg, bad) {
+  const el = $("toast");
+  el.textContent = msg;
+  el.classList.toggle("bad", !!bad);
+  el.classList.add("show");
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove("show"), bad ? 5000 : 1800);
+}
+
+function dayLabel(due) {
+  if (!due) return null;
+  const d = new Date(due + "T00:00:00");
+  const name = d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days = Math.round((d - today) / 86400000);
+  if (days < 0) return { text: name + " · overdue", soon: true };
+  if (days === 0) return { text: name + " · today", soon: true };
+  if (days === 1) return { text: name + " · tomorrow", soon: true };
+  return { text: name, soon: false };
+}
+
+async function patch(key, changes) {
+  const res = await fetch("/api/tasks/" + key, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(changes),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+async function move(task, status) {
+  if (task.status === status || !task.in_home) return;
+  const previous = task.status;
+  task.status = status;                 // optimistic, so the drop lands instantly
+  render();
+  try {
+    await patch(task.key, { status });
+    toast("Home.md updated");
+  } catch (err) {
+    task.status = previous;             // Home.md refused — put the card back
+    render();
+    toast("Home.md not updated: " + err.message, true);
+  }
+}
+
+async function saveNote(task, note, field) {
+  if (note === (task.note || "")) return;
+  try {
+    await patch(task.key, { note });
+    task.note = note;
+    toast(note ? "Note saved to Home.md" : "Note removed");
+  } catch (err) {
+    field.value = task.note || "";
+    toast("Note not saved: " + err.message, true);
+  }
+}
+
+function renderFilters() {
+  const box = $("filters");
+  box.hidden = false;
+  box.textContent = "";
+  const names = ["all", ...Object.keys(WS).filter((w) => tasks.some((t) => t.workstream === w))];
+  for (const name of names) {
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.textContent = name === "all" ? "All areas" : name;
+    b.setAttribute("aria-pressed", String(filterWs === name));
+    if (name !== "all") b.style.borderColor = filterWs === name ? "" : WS[name] + "66";
+    b.onclick = () => { filterWs = name; render(); };
+    box.appendChild(b);
+  }
+}
+
+function card(t) {
+  const el = document.createElement("article");
+  el.className = "card";
+  el.style.setProperty("--ws", WS[t.workstream] || "var(--border)");
+  el.dataset.key = t.key;
+  if (!t.in_home) el.dataset.orphan = "true";
+
+  el.draggable = t.in_home;
+  el.addEventListener("dragstart", (e) => {
+    e.dataTransfer.setData("text/plain", t.key);
+    e.dataTransfer.effectAllowed = "move";
+    el.classList.add("dragging");
+  });
+  el.addEventListener("dragend", () => el.classList.remove("dragging"));
+
+  const h = document.createElement("h3");
+  h.textContent = t.title;
+  el.appendChild(h);
+
+  const chips = document.createElement("div");
+  chips.className = "chips";
+
+  const due = dayLabel(t.due);
+  if (due) {
+    const tag = document.createElement("span");
+    tag.className = "tag" + (due.soon && t.status !== "done" ? " due-soon" : "");
+    tag.textContent = due.text;
+    chips.appendChild(tag);
+  }
+  if (t.priority === "high" || t.priority === "medium") {
+    const tag = document.createElement("span");
+    tag.className = "tag p-" + t.priority;
+    tag.textContent = t.priority;
+    chips.appendChild(tag);
+  }
+  if (filterWs === "all") {
+    const tag = document.createElement("span");
+    tag.className = "tag ws";
+    tag.textContent = t.workstream;
+    chips.appendChild(tag);
+  }
+  for (const ref of t.refs || []) {
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    const a = document.createElement("a");
+    a.href = ref.url; a.target = "_blank"; a.rel = "noopener noreferrer";
+    a.textContent = ref.label;
+    a.onclick = (e) => e.stopPropagation();
+    tag.appendChild(a);
+    chips.appendChild(tag);
+  }
+  if (!t.in_home) {
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = "read only";
+    chips.appendChild(tag);
+  }
+
+  if (t.in_home) {
+    const at = COLUMNS.findIndex((c) => c.id === t.status);
+    const nav = document.createElement("div");
+    nav.className = "move";
+    for (const [glyph, delta, label] of [["‹", -1, "Move left"], ["›", 1, "Move right"]]) {
+      const b = document.createElement("button");
+      b.textContent = glyph;
+      b.title = label;
+      b.disabled = !COLUMNS[at + delta];
+      b.onclick = (e) => { e.stopPropagation(); move(t, COLUMNS[at + delta].id); };
+      nav.appendChild(b);
+    }
+    chips.appendChild(nav);
+  }
+  el.appendChild(chips);
+
+  if (expanded.has(t.key)) {
+    const body = document.createElement("div");
+    body.className = "body";
+    if (t.detail) {
+      const p = document.createElement("p");
+      p.className = "detail";
+      p.textContent = t.detail;
+      body.appendChild(p);
+    }
+    if (t.in_home) {
+      const note = document.createElement("textarea");
+      note.className = "note";
+      note.rows = 1;
+      note.placeholder = "Note… (saved into Home.md)";
+      note.value = t.note || "";
+      note.onclick = (e) => e.stopPropagation();
+      note.onblur = () => saveNote(t, note.value.trim(), note);
+      body.appendChild(note);
+    }
+    el.appendChild(body);
+  }
+
+  el.onclick = () => {
+    expanded.has(t.key) ? expanded.delete(t.key) : expanded.add(t.key);
+    render();
+  };
+  return el;
+}
+
+function render() {
+  renderFilters();
+  const board = $("board");
+  board.textContent = "";
+
+  const shown = tasks.filter((t) => filterWs === "all" || t.workstream === filterWs);
+
+  for (const col of COLUMNS) {
+    const box = document.createElement("section");
+    box.className = "col";
+    box.dataset.col = col.id;
+
+    const head = document.createElement("header");
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    head.appendChild(dot);
+    head.append(col.label);
+    const count = document.createElement("span");
+    count.className = "count";
+    const items = shown.filter((t) => t.status === col.id);
+    count.textContent = items.length;
+    head.appendChild(count);
+    box.appendChild(head);
+
+    box.addEventListener("dragover", (e) => { e.preventDefault(); box.classList.add("over"); });
+    box.addEventListener("dragleave", () => box.classList.remove("over"));
+    box.addEventListener("drop", (e) => {
+      e.preventDefault();
+      box.classList.remove("over");
+      const t = tasks.find((x) => x.key === e.dataTransfer.getData("text/plain"));
+      if (t) move(t, col.id);
+    });
+
+    if (!items.length) {
+      const p = document.createElement("p");
+      p.className = "empty";
+      p.textContent = col.id === "done" ? "nothing finished yet" : "empty";
+      box.appendChild(p);
+    }
+    for (const t of items) box.appendChild(card(t));
+    board.appendChild(box);
+  }
+
+  const done = tasks.filter((t) => t.status === "done").length;
+  const blocked = tasks.filter((t) => t.status === "blocked").length;
+  const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
+  $("barBox").hidden = false;
+  $("bar").style.width = pct + "%";
+  $("barLabel").textContent =
+    `${done} of ${tasks.length} done · ${pct}%` + (blocked ? ` · ${blocked} blocked` : "");
+}
+
+async function load(quiet) {
+  let data;
+  try {
+    const res = await fetch("/api/tasks");
+    data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.statusText);
+  } catch (err) {
+    if (quiet) return;
+    $("sub").textContent = "";
+    $("offline").hidden = false;
+    $("offlineWhy").textContent = "(" + err.message + ")";
+    return;
+  }
+
+  $("offline").hidden = true;
+  tasks = data.tasks;
+  meta = data.meta || {};
+
+  const names = (meta.workstreams && meta.workstreams.length)
+    ? meta.workstreams
+    : [...new Set(tasks.map((t) => t.workstream))];
+  WS = Object.fromEntries(names.map((n, i) => [n, PALETTE[i % PALETTE.length]]));
+
+  const fmt = (d) => d
+    ? new Date(d + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "long" })
+    : "";
+  $("sub").textContent = "";
+  $("sub").append(`${fmt(meta.week_start)} – ${fmt(meta.week_end)} · drag a card to move it · saved in `);
+  const code = document.createElement("code");
+  code.textContent = "Home.md";
+  $("sub").append(code);
+
+  const box = $("notes");
+  box.textContent = "";
+  const summary = document.createElement("summary");
+  summary.textContent = "Worth knowing this week";
+  box.appendChild(summary);
+  if ((meta.notes || []).length) {
+    const ul = document.createElement("ul");
+    for (const n of meta.notes) {
+      const li = document.createElement("li");
+      li.textContent = n;
+      ul.appendChild(li);
+    }
+    box.appendChild(ul);
+    box.hidden = false;
+  }
+
+  const foot = $("foot");
+  foot.hidden = false;
+  foot.textContent = "Click a card for the detail and a note. Drag it, or use ‹ › to move it. " +
+    "Everything is written straight into Home.md.";
+
+  render();
+}
+
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load(true); });
+window.addEventListener("focus", () => load(true));
+
+load(false);
+</script>
+</body>
+</html>

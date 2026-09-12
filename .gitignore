@@ -1,0 +1,8 @@
+__pycache__/
+.DS_Store
+
+# Never commit real board data — it contains customer names and ticket detail
+tasks.json
+Home.md
+dashboard/tasks.json
+!example/tasks.json

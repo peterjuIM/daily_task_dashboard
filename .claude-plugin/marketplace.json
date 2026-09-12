@@ -1,0 +1,14 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "action-points",
+  "description": "Daily and weekly planning from Jira, Outlook and Teams",
+  "owner": { "name": "Peter Ju", "email": "140773831+peterjuIM@users.noreply.github.com" },
+  "plugins": [
+    {
+      "name": "action-points",
+      "description": "Turn Jira, Outlook and Teams into an organised list of what to do",
+      "source": "./",
+      "author": { "name": "Peter Ju", "email": "140773831+peterjuIM@users.noreply.github.com" }
+    }
+  ]
+}
