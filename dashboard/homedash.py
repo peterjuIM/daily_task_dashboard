@@ -33,10 +33,15 @@ PORT = int(os.environ.get("BOARD_PORT", "8765"))
 SECTION_START = os.environ.get("BOARD_SECTION_START", "## This week")
 SECTION_END = os.environ.get("BOARD_SECTION_END", "## Open tasks across the vault")
 
-# Obsidian keeps whatever character sits between the brackets, so the four
+# Obsidian keeps whatever character sits between the brackets, so the five
 # states round-trip cleanly. Anything unrecognised is treated as "todo".
-MARK_TO_STATUS = {" ": "todo", "/": "doing", "!": "blocked", "x": "done", "X": "done"}
-STATUS_TO_MARK = {"todo": " ", "doing": "/", "blocked": "!", "done": "x"}
+# "not_my_task" is set by hand from the page (or in Obsidian with `- [-]`) when
+# an item lands on the board but isn't actually the user's to do — the scheduled
+# refresh must never set or clear it itself, only the person does.
+MARK_TO_STATUS = {" ": "todo", "/": "doing", "!": "blocked", "x": "done", "X": "done",
+                  "-": "not_my_task"}
+STATUS_TO_MARK = {"todo": " ", "doing": "/", "blocked": "!", "done": "x",
+                   "not_my_task": "-"}
 
 TASK_RE = re.compile(r"^(?P<indent>\s*)- \[(?P<mark>.)\] (?P<text>.*?)\s*\^(?P<key>[\w-]+)\s*$")
 NOTE_RE = re.compile(r"^\s+- note:\s?(?P<note>.*)$")
@@ -44,6 +49,46 @@ NOTE_RE = re.compile(r"^\s+- note:\s?(?P<note>.*)$")
 
 class HomeMdError(RuntimeError):
     pass
+
+
+def read_tasks():
+    return json.loads(TASKS_JSON.read_text())
+
+
+def write_tasks(data):
+    """Replace tasks.json atomically, same trick as write_home."""
+    body = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
+    fd, tmp = tempfile.mkstemp(dir=str(TASKS_JSON.parent), prefix=".tasks.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as fh:
+            fh.write(body)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, TASKS_JSON)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
+def set_task_fields(key, workstream=None, tags=None, detail=None):
+    """Update the wording-side fields (workstream, tags, detail) for one task.
+
+    These live in tasks.json, not Home.md — they aren't a checkbox state, they're
+    part of how the task is described. Editable from the web UI so a miscategorised
+    workstream or a tag doesn't require hand-editing JSON.
+    """
+    data = read_tasks()
+    task = next((t for t in data["tasks"] if t["key"] == key), None)
+    if task is None:
+        return None
+    if workstream is not None:
+        task["workstream"] = workstream
+    if tags is not None:
+        task["tags"] = tags
+    if detail is not None:
+        task["detail"] = detail
+    write_tasks(data)
+    return task
 
 
 def read_home():
@@ -127,6 +172,7 @@ def build_payload():
         tasks.append({
             **{k: t.get(k) for k in
                ("key", "title", "detail", "workstream", "priority", "due", "source", "refs")},
+            "tags": t.get("tags") or [],
             "status": entry["status"] if entry else t.get("status", "todo"),
             "note": entry["note"] if entry else "",
             "in_home": entry is not None,
@@ -187,25 +233,52 @@ class Handler(BaseHTTPRequestHandler):
 
         status = body.get("status")
         note = body.get("note")
+        workstream = body.get("workstream")
+        tags = body.get("tags")
+
         if status is not None and status not in STATUS_TO_MARK:
             self._json(400, {"error": "invalid status"})
             return
-        if status is None and note is None:
+        if workstream is not None:
+            allowed = read_tasks().get("workstreams") or []
+            if workstream not in allowed:
+                self._json(400, {"error": f"workstream must be one of: {', '.join(allowed)}"})
+                return
+        if tags is not None:
+            if not isinstance(tags, list) or not all(isinstance(t, str) for t in tags):
+                self._json(400, {"error": "tags must be a list of strings"})
+                return
+            tags = [t.strip() for t in tags if t.strip()][:20]
+        if status is None and note is None and workstream is None and tags is None:
             self._json(400, {"error": "nothing to update"})
             return
         if note is not None:
             note = str(note)[:2000]
 
-        try:
-            updated = apply_change(m.group(1), status, note)
-        except HomeMdError as e:
-            self._json(500, {"error": str(e)})
-            return
+        key = m.group(1)
 
-        if updated is None:
-            self._json(404, {"error": f"no ^{m.group(1)} anchor in Home.md"})
+        if workstream is not None or tags is not None:
+            if set_task_fields(key, workstream=workstream, tags=tags) is None:
+                self._json(404, {"error": f"no such task: {key}"})
+                return
+
+        if status is not None or note is not None:
+            try:
+                updated = apply_change(key, status, note)
+            except HomeMdError as e:
+                self._json(500, {"error": str(e)})
+                return
+            if updated is None:
+                self._json(404, {"error": f"no ^{key} anchor in Home.md"})
+                return
+
+        payload = build_payload()
+        task = next((t for t in payload["tasks"] if t["key"] == key), None)
+        if task is None:
+            self._json(404, {"error": f"no such task: {key}"})
             return
-        self._json(200, {"key": m.group(1), "status": updated["status"], "note": updated["note"]})
+        self._json(200, {"key": key, "status": task["status"], "note": task["note"],
+                          "workstream": task["workstream"], "tags": task["tags"]})
 
 
 def main():

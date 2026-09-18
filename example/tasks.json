@@ -40,6 +40,29 @@
       "status": "todo",
       "source": "jira",
       "refs": []
+    },
+    {
+      "key": "example-rename-a-field",
+      "title": "Rename a field in the customer portal",
+      "detail": "Ticket status is 'Feature Request' — forwarded to product, not something you're chasing.",
+      "workstream": "Platform",
+      "priority": "low",
+      "due": null,
+      "status": "todo",
+      "source": "jira",
+      "tags": ["Feature/Defect/Request"],
+      "refs": [{ "label": "PROJ-88", "url": "https://example.atlassian.net/browse/PROJ-88" }]
+    },
+    {
+      "key": "example-someone-elses-ticket",
+      "title": "Fix the export button on the reports page",
+      "detail": "Assigned to you by mistake — it's actually the Reports team's area.",
+      "workstream": "Internal",
+      "priority": "medium",
+      "due": null,
+      "status": "not_my_task",
+      "source": "jira",
+      "refs": []
     }
   ]
 }

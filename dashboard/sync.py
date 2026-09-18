@@ -7,9 +7,14 @@ files in step is exactly the sort of thing an unattended run gets wrong, so do i
 through here instead.
 
     python3 sync.py list                      # what is on the board now, as JSON
-    python3 sync.py add --title "..." --workstream "..." [...]
+    python3 sync.py add --title "..." --workstream "..." [--tag "..."] [...]
     python3 sync.py set-status --key KEY --status done
     python3 sync.py note --key KEY --text "..."
+    python3 sync.py edit --key KEY [--workstream "..."] [--add-tag "..."] [--remove-tag "..."]
+
+Tags are free text, not a fixed list — anyone (this script, the board's web UI) can
+put any word on a task. There is no registry of "valid" tags to keep in step;
+whatever string is on a task is the tag.
 
 Every command prints what it did. `add` is idempotent on the key, so re-running a
 sync does not create duplicates.
@@ -48,23 +53,16 @@ def slugify(text, existing):
     return key
 
 
-def load_tasks():
-    return json.loads(homedash.TASKS_JSON.read_text())
-
-
-def save_tasks(data):
-    homedash.TASKS_JSON.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
-
-
 def cmd_list(args):
     payload = homedash.build_payload()
-    rows = [{k: t[k] for k in ("key", "title", "status", "workstream", "priority", "due", "refs")}
+    rows = [{k: t[k] for k in
+             ("key", "title", "status", "workstream", "priority", "due", "tags", "refs")}
             for t in payload["tasks"]]
     print(json.dumps({"week": payload["meta"]["week"], "tasks": rows}, ensure_ascii=False, indent=2))
 
 
 def cmd_add(args):
-    data = load_tasks()
+    data = homedash.read_tasks()
     existing = {t["key"] for t in data["tasks"]}
 
     key = args.key or slugify(args.title, existing)
@@ -89,6 +87,7 @@ def cmd_add(args):
         "status": "todo",
         "source": args.source,
         "refs": refs,
+        "tags": list(dict.fromkeys(args.tag or [])),   # de-duplicate, keep order
     }
     data["tasks"].append(task)
 
@@ -118,7 +117,7 @@ def cmd_add(args):
         lines[insert:insert] = [line]
 
     homedash.write_home(lines)
-    save_tasks(data)     # only after Home.md succeeded, so the two cannot drift
+    homedash.write_tasks(data)  # only after Home.md succeeded, so the two cannot drift
     print(f"added: {key} ({args.workstream}, {args.priority}, due {args.due or 'none'})")
 
 
@@ -142,6 +141,52 @@ def cmd_note(args):
     print(f"{args.key}: note {'set' if args.text else 'cleared'}")
 
 
+def cmd_edit(args):
+    """Correct the wording-side fields (workstream, tags, detail) on an existing task.
+
+    Unlike `add`, this can change a task already on the board — for when the
+    workstream was guessed wrong, a tag needs adding or removing, or the detail
+    text goes stale after a recategorisation. Same tasks.json fields the web UI
+    edits, through the same atomic write.
+    """
+    data = homedash.read_tasks()
+    task = next((t for t in data["tasks"] if t["key"] == args.key), None)
+    if task is None:
+        sys.exit(f"no such task: {args.key}")
+
+    if args.workstream is not None:
+        allowed = data.get("workstreams") or []
+        if allowed and args.workstream not in allowed:
+            sys.exit(f"--workstream must be one of: {', '.join(allowed)}")
+
+    tags = list(task.get("tags") or [])
+    for t in args.add_tag or []:
+        if t not in tags:
+            tags.append(t)
+    for t in args.remove_tag or []:
+        tags = [x for x in tags if x != t]
+
+    changed = []
+    if args.workstream is not None and args.workstream != task["workstream"]:
+        changed.append(f"workstream: {task['workstream']} -> {args.workstream}")
+    if tags != (task.get("tags") or []):
+        changed.append(f"tags: {task.get('tags') or []} -> {tags}")
+    if args.detail is not None and args.detail != task.get("detail", ""):
+        changed.append("detail: updated")
+
+    if not changed:
+        print(f"unchanged: {args.key}")
+        return
+
+    homedash.set_task_fields(
+        args.key,
+        workstream=args.workstream if args.workstream is not None else None,
+        tags=tags,
+        detail=args.detail,
+    )
+    print(f"{args.key}: " + "; ".join(changed))
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__,
                                formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -157,18 +202,28 @@ def main():
     a.add_argument("--due", default=None, help="YYYY-MM-DD")
     a.add_argument("--source", default="jira", choices=["jira", "email", "teams", "calendar"])
     a.add_argument("--ref", action="append", metavar="LABEL=URL")
+    a.add_argument("--tag", action="append", help="free text, repeatable")
     a.add_argument("--key", default=None, help="defaults to a slug of the title")
     a.set_defaults(fn=cmd_add)
 
     s = sub.add_parser("set-status", help="move a task between columns")
     s.add_argument("--key", required=True)
-    s.add_argument("--status", required=True, choices=["todo", "doing", "blocked", "done"])
+    s.add_argument("--status", required=True,
+                   choices=["todo", "doing", "blocked", "done", "not_my_task"])
     s.set_defaults(fn=cmd_set_status)
 
     n = sub.add_parser("note", help="write a note onto a task")
     n.add_argument("--key", required=True)
     n.add_argument("--text", default="")
     n.set_defaults(fn=cmd_note)
+
+    e = sub.add_parser("edit", help="correct workstream, tags and/or detail on an existing task")
+    e.add_argument("--key", required=True)
+    e.add_argument("--workstream", default=None)
+    e.add_argument("--add-tag", action="append", help="free text, repeatable")
+    e.add_argument("--remove-tag", action="append", help="free text, repeatable")
+    e.add_argument("--detail", default=None)
+    e.set_defaults(fn=cmd_edit)
 
     args = p.parse_args()
     due = getattr(args, "due", None)      # only `add` has one

@@ -17,6 +17,12 @@ And Claude Code: the CLI, the desktop app's Code tab, or an IDE extension. If yo
 only use the claude.ai chat window, this skill will not appear — use the plain
 prompt instead (see *Without installing* below).
 
+**Python 3.9 or later**, on your own machine — only if you want the dashboard.
+`dashboard/homedash.py` and `dashboard/sync.py` are plain-standard-library
+scripts (no `pip install` needed), but they do need a local Python 3 to run.
+Check with `python3 --version`; without the dashboard, the skill itself needs no
+local runtime at all — it just reports in chat.
+
 ## Install
 
 ```
@@ -136,21 +142,41 @@ an Obsidian block id:
 - [ ] Write the rollout plan — [PROJ-101](...)  ^example-write-the-plan
 ```
 
-States are `[ ]` to do, `[/]` doing, `[!]` blocked, `[x]` done. Only `[x]` is
-standard markdown; the other two are stored faithfully but may render as a plain
-empty box depending on your Obsidian theme.
+States are `[ ]` to do, `[/]` doing, `[!]` blocked, `[x]` done, `[-]` not my task.
+Only `[x]` is standard markdown; the others are stored faithfully but may render
+as a plain empty box depending on your Obsidian theme. `[-]` is set from the board
+only — by you, clicking **⊘ Not my task** on a card that landed there but isn't
+actually yours — never by the scheduled skill run itself.
 
 Point it at your own notes with the `BOARD_*` variables above.
 `BOARD_SECTION_START` and `BOARD_SECTION_END` mark the two headings it works
 between — it never touches anything outside them.
+
+### Workstream and tags
+
+Each card also carries a **workstream** (the customer or project — a dropdown on
+the card) and a **tags** list (free text — a "+ tag" control and an × on each
+existing chip). Both are editable straight from the board, so a miscategorised
+workstream doesn't need a JSON edit. They live in `tasks.json`, not the note, and
+are written through the same atomic-write path `sync.py` uses.
+
+The one tag the board treats specially is `Feature/Defect/Request` — a ticket
+whose status shows it's been forwarded to another team, not something you're
+actively pushing. Tag a card with it and it moves into its own side lane instead
+of cluttering To do / Doing / Blocked, with a chip to hide that lane entirely.
+Drag a card into the lane to tag it; drag it back out to untag it and resume
+normal tracking. It's just a tag — put anything else on a card that's useful to
+you, there's no fixed list.
 
 ### Rules that matter
 
 **Only mark something done on clear evidence.** An unattended run that wrongly ticks
 things is worse than one that leaves them open.
 
-**Do not hand-edit `tasks.json` and the note separately.** Use `sync.py` — it writes
-both together, or neither.
+**Do not hand-edit `tasks.json` and the note separately.** Use `sync.py` — it
+writes both together, or neither. To correct an existing card's workstream, tags
+or detail text without going through the board's UI, use `sync.py edit` (it only
+ever changes an existing task; `add` only ever creates a new one).
 
 **Your real `tasks.json` is gitignored, deliberately.** A live board holds customer
 names, ticket numbers and internal detail. Keep it out of any repo you share.

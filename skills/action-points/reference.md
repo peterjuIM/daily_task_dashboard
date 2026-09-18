@@ -22,6 +22,17 @@ customers" is more useful than 38 undifferentiated rows.
 **Only issues assigned to the user appear.** Issues where they are a watcher,
 reporter or commenter will not. Mention this if the user seems to expect otherwise.
 
+**A third state: "Feature / Change / Defect".** This status usually means the
+ticket has been forwarded to another team (development, product) to pick up —
+it is a wait, just not on the customer. It does **not** mean "nobody is chasing
+this, park it." Keep the ticket in its real customer/project workstream — moving
+it to a generic bucket erases exactly the context (which customer, which product
+area) that made it findable. Where you're confident it's genuinely sitting with
+another team, add the tag `Feature/Defect/Request` (see **Tags** below) instead
+of changing its workstream. Don't tag it on every ticket in this status by
+reflex — if a ticket has clearly gone stale with nobody on either side looking at
+it, leave it untagged and say so.
+
 ## Outlook
 
 **Search results are summaries, and they truncate.** A status thread with a table of
@@ -69,6 +80,18 @@ python3 sync.py note --key KEY --text "..."
 Run `list` **first**, every time. It prints what is already there. Never add
 something that is on the board under different wording.
 
+### Not my task
+
+A task can carry the status `not_my_task`. The person sets this by hand from the
+board's UI — a `→ Not my task` button on the card — when something landed on the
+board but genuinely isn't theirs to do. It is never something this skill sets or
+clears on its own.
+
+Leave any `not_my_task` item exactly as it is: don't change its status, don't
+re-evaluate whether it's "really" done or still open, and don't fold its content
+into another task. It won't come back as a duplicate on its own — `sync.py add`
+is idempotent on the key — so there is nothing to do here except leave it alone.
+
 ### Marking things done
 
 Only on clear evidence:
@@ -85,6 +108,49 @@ promising-looking discussion.
 **If unsure, leave it open and say so.** An unattended run that wrongly ticks
 something is worse than one that leaves it. The user can tick a box in a second;
 they cannot recover work they never knew was still outstanding.
+
+### Tags
+
+Tasks carry a `tags` list — free text, not a fixed vocabulary. There's no
+registry to keep in step; whatever string is on a task is the tag. Anyone can
+add one: this script, the board's web UI (each card has a "+ tag" control and an
+× on each existing tag when expanded), or you.
+
+Use the tag `Feature/Defect/Request` for a ticket whose Jira status is
+"Feature / Change / Defect" **and** you're confident it's genuinely sitting with
+another team (see **A third state** under Jira above) — not as a blanket label
+for every ticket in that status. Keep the task in its real customer/project
+workstream; the tag carries the "waiting on someone else" signal, the workstream
+still says who the work is for.
+
+```
+python3 sync.py add --title "..." --workstream "..." --priority low --tag "Feature/Defect/Request" [...]
+python3 sync.py edit --key KEY --add-tag "Feature/Defect/Request"
+python3 sync.py edit --key KEY --remove-tag "..."
+```
+
+### Correcting workstream, tags or detail on an existing task
+
+`add` only creates — it never edits an item already on the board. For a
+miscategorised workstream, a tag to add or remove, or detail text that's gone
+stale, use `edit`:
+
+```
+python3 sync.py edit --key KEY --workstream "..."
+python3 sync.py edit --key KEY --add-tag "..." --remove-tag "..."
+python3 sync.py edit --key KEY --detail "..."
+```
+
+This writes straight to `tasks.json` through the same atomic write `add` uses —
+never hand-edit that file. `Home.md` never stores workstream, tags or detail
+(only the checkbox mark, the title and notes), so editing them through `edit`
+can't drift the two files out of step.
+
+If you get a workstream wrong, don't be shy about using `edit` to fix it once
+you have better evidence (a project label, a customer name in the ticket) —
+that's exactly what it's for. When you're not confident which workstream a
+ticket belongs to, say so in your report rather than guessing; the person can
+always fix it from the board themselves.
 
 ### When something is wrong
 

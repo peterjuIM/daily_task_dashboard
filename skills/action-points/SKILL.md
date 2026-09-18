@@ -49,6 +49,14 @@ Drop newsletters, digests, meeting accept/decline notices, and automated alerts.
 Group by **workstream** — the customer or project — not by which tool it came from.
 A person thinks in customers, not in inboxes. Order each group by due date.
 
+Jira tickets sitting in a "Feature / Change / Defect" status usually mean the
+ticket has been forwarded to another team, not that nobody is chasing it — keep
+these inside their real customer/project workstream, don't move them to a
+generic group. Where you're confident it's genuinely waiting on another team,
+mark it with the tag `Feature/Defect/Request` instead. See **Tags** in
+`reference.md` for how to apply that judgement call and how tags work on a
+board.
+
 For every item give:
 
 - A short title in plain words. Say the thing to do. One idea per title.
