@@ -115,7 +115,7 @@ your notes are the same act.
 
 ```
 dashboard/homedash.py   local server + read/write API
-dashboard/sync.py       safe add / set-status / note, used by the scheduled task
+dashboard/sync.py       safe add / set-status / note / edit, used by the scheduled task
 dashboard/board.html    the board: To do, Doing, Blocked, Done
 example/                a working note and tasks.json to try it against
 ```
@@ -174,9 +174,14 @@ you, there's no fixed list.
 things is worse than one that leaves them open.
 
 **Do not hand-edit `tasks.json` and the note separately.** Use `sync.py` — it
-writes both together, or neither. To correct an existing card's workstream, tags
-or detail text without going through the board's UI, use `sync.py edit` (it only
-ever changes an existing task; `add` only ever creates a new one).
+writes both together, or neither. To correct an existing card's workstream, tags,
+detail text, due date or ticket links without going through the board's UI, use
+`sync.py edit` (it only ever changes an existing task; `add` only ever creates a
+new one).
+
+**Notes are a log.** `sync.py note` appends a line; it never wipes earlier notes
+unless you pass `--replace`. A task blocked for more than 3 days shows up as
+`stale_blocked` in `sync.py list` and gets a "follow up" warning on the board.
 
 **Your real `tasks.json` is gitignored, deliberately.** A live board holds customer
 names, ticket numbers and internal detail. Keep it out of any repo you share.

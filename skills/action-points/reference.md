@@ -74,11 +74,17 @@ python3 sync.py list
 python3 sync.py add --title "..." --workstream "..." --priority high|medium|low \
     --detail "..." --due YYYY-MM-DD --source jira|email|teams|calendar --ref LABEL=URL
 python3 sync.py set-status --key KEY --status todo|doing|blocked|done
-python3 sync.py note --key KEY --text "..."
+python3 sync.py note --key KEY --text "..."     # appends one line
 ```
 
 Run `list` **first**, every time. It prints what is already there. Never add
 something that is on the board under different wording.
+
+`set-status --status blocked` stamps the day the task became blocked. `list`
+then reports `days_blocked`, and `stale_blocked: true` once that passes 3 days.
+List every stale blocked task in the report, with the name of the person it is
+waiting on — that is exactly the "ball has been in someone's court for days"
+signal the user needs.
 
 ### Not my task
 
@@ -91,6 +97,42 @@ Leave any `not_my_task` item exactly as it is: don't change its status, don't
 re-evaluate whether it's "really" done or still open, and don't fold its content
 into another task. It won't come back as a duplicate on its own — `sync.py add`
 is idempotent on the key — so there is nothing to do here except leave it alone.
+
+### Notes are a log — append, never overwrite
+
+`note` **appends** a line to whatever notes the task already has. Earlier notes
+are evidence: why something was ticked, what the user promised, what changed on
+which day. Start each note with the date (`15 Oct: ...`) so the log reads in
+order. Re-sending the exact same line is a no-op, so a re-run does not pile up
+duplicates.
+
+`--replace` overwrites every note line on the task. An unattended run should
+almost never need it. Use it only to repair a note you yourself just wrote
+wrongly in this same run, and say so in the report.
+
+### Backlog category
+
+`Backlog` is a workstream for Jira tickets that sit in a backlog or
+feature-request state — **not** a catch-all for anything that doesn't fit.
+A ticket belongs there when its Jira status says it has left support's hands
+for good: a status such as "Backlog", "Feature Request", "Forward to
+development" or "On-hold" pending a product decision, with no customer or
+internal reply due.
+
+- A ticket in **"Feature / Change / Defect"** is *not* Backlog by default. It
+  stays in its customer/project workstream with the `Feature/Defect/Request`
+  tag (see **Tags**), because someone is still chasing it.
+- Move a ticket to Backlog only when the Jira status itself is a backlog /
+  feature-request state, or the ticket has clearly been parked with no date and
+  no one waiting on it. Say in the report which ones you moved and why.
+- Never move a ticket out of Backlog just because it is old. Move it back to its
+  customer workstream only when it comes alive again (a new customer comment, a
+  status change back into an active state).
+- Backlog items are low priority unless a date or a customer escalation says
+  otherwise.
+
+If the user's board has no `Backlog` workstream, don't invent one — keep the
+ticket in its customer workstream with the tag.
 
 ### Marking things done
 
@@ -129,22 +171,29 @@ python3 sync.py edit --key KEY --add-tag "Feature/Defect/Request"
 python3 sync.py edit --key KEY --remove-tag "..."
 ```
 
-### Correcting workstream, tags or detail on an existing task
+### Correcting workstream, tags, detail, due date or links on an existing task
 
 `add` only creates — it never edits an item already on the board. For a
-miscategorised workstream, a tag to add or remove, or detail text that's gone
-stale, use `edit`:
+miscategorised workstream, a tag to add or remove, detail text that's gone
+stale, a deadline that moved, or a Jira key that turned up later, use `edit`:
 
 ```
 python3 sync.py edit --key KEY --workstream "..."
 python3 sync.py edit --key KEY --add-tag "..." --remove-tag "..."
 python3 sync.py edit --key KEY --detail "..."
+python3 sync.py edit --key KEY --due YYYY-MM-DD      # or --due none to clear
+python3 sync.py edit --key KEY --add-ref "CSSAS-123=https://.../browse/CSSAS-123"
 ```
 
+Only move a due date on a **stated** new date (a customer cutoff, a rescheduled
+meeting). Record where the new date came from in a note. When a task gains a
+Jira ticket after it was added, attach it with `--add-ref` rather than adding a
+second task for the same work.
+
 This writes straight to `tasks.json` through the same atomic write `add` uses —
-never hand-edit that file. `Home.md` never stores workstream, tags or detail
-(only the checkbox mark, the title and notes), so editing them through `edit`
-can't drift the two files out of step.
+never hand-edit that file. `Home.md` never stores workstream, tags, detail, due
+or refs (only the checkbox mark, the title and notes), so editing them through
+`edit` can't drift the two files out of step.
 
 If you get a workstream wrong, don't be shy about using `edit` to fix it once
 you have better evidence (a project label, a customer name in the ticket) —

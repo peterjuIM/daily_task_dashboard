@@ -16,6 +16,7 @@ import os
 import re
 import sys
 import tempfile
+from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -42,6 +43,10 @@ MARK_TO_STATUS = {" ": "todo", "/": "doing", "!": "blocked", "x": "done", "X": "
                   "-": "not_my_task"}
 STATUS_TO_MARK = {"todo": " ", "doing": "/", "blocked": "!", "done": "x",
                    "not_my_task": "-"}
+
+# A task blocked longer than this needs a nudge — see _record_blocked_transition
+# and build_payload's "days_blocked".
+BLOCKED_WARN_DAYS = 3
 
 TASK_RE = re.compile(r"^(?P<indent>\s*)- \[(?P<mark>.)\] (?P<text>.*?)\s*\^(?P<key>[\w-]+)\s*$")
 NOTE_RE = re.compile(r"^\s+- note:\s?(?P<note>.*)$")
@@ -70,8 +75,14 @@ def write_tasks(data):
         raise
 
 
-def set_task_fields(key, workstream=None, tags=None, detail=None):
-    """Update the wording-side fields (workstream, tags, detail) for one task.
+_UNSET = object()
+
+
+def set_task_fields(key, workstream=None, tags=None, detail=None, due=_UNSET, refs=None):
+    """Update the wording-side fields (workstream, tags, detail, due, refs) for one task.
+
+    `due` uses a sentinel rather than None so a caller can clear a due date by
+    passing None explicitly.
 
     These live in tasks.json, not Home.md — they aren't a checkbox state, they're
     part of how the task is described. Editable from the web UI so a miscategorised
@@ -87,6 +98,10 @@ def set_task_fields(key, workstream=None, tags=None, detail=None):
         task["tags"] = tags
     if detail is not None:
         task["detail"] = detail
+    if due is not _UNSET:
+        task["due"] = due
+    if refs is not None:
+        task["refs"] = refs
     write_tasks(data)
     return task
 
@@ -140,6 +155,29 @@ def write_home(lines):
         raise
 
 
+def _record_blocked_transition(key, old_status, new_status):
+    """Stamp or clear tasks.json's blocked_since when status crosses into/out of blocked.
+
+    Home.md has no room for a timestamp on a checkbox line, so this lives in
+    tasks.json instead — the same file that already holds the other fields the
+    person doesn't hand-edit. build_payload turns it into "days_blocked" so the
+    board (and the scheduled refresh) can flag a task that's been stuck too long.
+    """
+    if old_status == new_status:
+        return
+    became_blocked = new_status == "blocked" and old_status != "blocked"
+    left_blocked = old_status == "blocked" and new_status != "blocked"
+    if not (became_blocked or left_blocked):
+        return
+
+    data = read_tasks()
+    task = next((t for t in data["tasks"] if t["key"] == key), None)
+    if task is None:
+        return
+    task["blocked_since"] = date.today().isoformat() if became_blocked else None
+    write_tasks(data)
+
+
 def apply_change(key, status=None, note=None):
     lines, found = read_home()
     if key not in found:
@@ -158,6 +196,8 @@ def apply_change(key, status=None, note=None):
         lines[note_start:note_end] = replacement
 
     write_home(lines)
+    if status is not None:
+        _record_blocked_transition(key, entry["status"], status)
     _, found = read_home()
     return found.get(key)
 
@@ -169,13 +209,26 @@ def build_payload():
     tasks = []
     for t in meta["tasks"]:
         entry = found.get(t["key"])
+        status = entry["status"] if entry else t.get("status", "todo")
+
+        days_blocked = None
+        if status == "blocked" and t.get("blocked_since"):
+            try:
+                since = date.fromisoformat(t["blocked_since"])
+                days_blocked = (date.today() - since).days
+            except ValueError:
+                days_blocked = None
+
         tasks.append({
             **{k: t.get(k) for k in
                ("key", "title", "detail", "workstream", "priority", "due", "source", "refs")},
             "tags": t.get("tags") or [],
-            "status": entry["status"] if entry else t.get("status", "todo"),
+            "status": status,
             "note": entry["note"] if entry else "",
             "in_home": entry is not None,
+            "blocked_since": t.get("blocked_since"),
+            "days_blocked": days_blocked,
+            "stale_blocked": days_blocked is not None and days_blocked > BLOCKED_WARN_DAYS,
         })
 
     order = {"high": 0, "medium": 1, "low": 2}

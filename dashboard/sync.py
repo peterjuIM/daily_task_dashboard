@@ -9,8 +9,15 @@ through here instead.
     python3 sync.py list                      # what is on the board now, as JSON
     python3 sync.py add --title "..." --workstream "..." [--tag "..."] [...]
     python3 sync.py set-status --key KEY --status done
-    python3 sync.py note --key KEY --text "..."
+    python3 sync.py note --key KEY --text "..."            # appends a line
+    python3 sync.py note --key KEY --text "..." --replace  # overwrites every note line
     python3 sync.py edit --key KEY [--workstream "..."] [--add-tag "..."] [--remove-tag "..."]
+                                   [--detail "..."] [--due YYYY-MM-DD|none] [--add-ref LABEL=URL]
+
+`note` APPENDS by default. Earlier notes are history (evidence for why a task was
+ticked, what was promised, when) and an unattended run must never wipe them by
+accident. Pass --replace only when you mean to rewrite them all; --replace with
+an empty --text clears the note.
 
 Tags are free text, not a fixed list — anyone (this script, the board's web UI) can
 put any word on a task. There is no registry of "valid" tags to keep in step;
@@ -18,6 +25,11 @@ whatever string is on a task is the tag.
 
 Every command prints what it did. `add` is idempotent on the key, so re-running a
 sync does not create duplicates.
+
+`set-status --status blocked` stamps the task with today's date; `list` then
+reports `days_blocked` and `stale_blocked` (true past 3 days) so a task that's
+been stuck doesn't quietly sit there — the board also shows a "follow up"
+warning on any card blocked that long.
 """
 
 import argparse
@@ -56,7 +68,8 @@ def slugify(text, existing):
 def cmd_list(args):
     payload = homedash.build_payload()
     rows = [{k: t[k] for k in
-             ("key", "title", "status", "workstream", "priority", "due", "tags", "refs")}
+             ("key", "title", "status", "workstream", "priority", "due", "tags", "refs",
+              "days_blocked", "stale_blocked")}
             for t in payload["tasks"]]
     print(json.dumps({"week": payload["meta"]["week"], "tasks": rows}, ensure_ascii=False, indent=2))
 
@@ -110,7 +123,12 @@ def cmd_add(args):
         lines[tail:tail] = ["", NEW_HEADING, "", line]
     else:
         insert = heading + 1
-        while insert < end and (lines[insert].startswith("- [") or not lines[insert].strip()):
+        # Step over task lines AND their indented "- note:" lines, so the new
+        # task never lands between an existing task and its notes (which would
+        # silently re-attach those notes to the new task).
+        while insert < end and (lines[insert].startswith("- [")
+                                or homedash.NOTE_RE.match(lines[insert])
+                                or not lines[insert].strip()):
             insert += 1
         while insert > heading + 1 and not lines[insert - 1].strip():
             insert -= 1
@@ -137,12 +155,25 @@ def cmd_note(args):
     _, found = homedash.read_home()
     if args.key not in found:
         sys.exit(f"no such task: {args.key}")
-    homedash.apply_change(args.key, note=args.text)
-    print(f"{args.key}: note {'set' if args.text else 'cleared'}")
+    existing = found[args.key].get("note", "")
+    text = args.text.strip()
+
+    if args.replace:
+        homedash.apply_change(args.key, note=text)
+        print(f"{args.key}: note {'replaced' if text else 'cleared'}")
+        return
+    if not text:
+        sys.exit("--text is empty; use --replace --text '' to clear a note")
+    if text in existing.split("\n"):
+        print(f"unchanged: {args.key} already has that note")
+        return
+    combined = f"{existing}\n{text}" if existing else text
+    homedash.apply_change(args.key, note=combined)
+    print(f"{args.key}: note appended ({len(combined.splitlines())} line(s) now)")
 
 
 def cmd_edit(args):
-    """Correct the wording-side fields (workstream, tags, detail) on an existing task.
+    """Correct the wording-side fields (workstream, tags, detail, due, refs) on an existing task.
 
     Unlike `add`, this can change a task already on the board — for when the
     workstream was guessed wrong, a tag needs adding or removing, or the detail
@@ -174,6 +205,23 @@ def cmd_edit(args):
     if args.detail is not None and args.detail != task.get("detail", ""):
         changed.append("detail: updated")
 
+    due = homedash._UNSET
+    if args.due is not None:
+        due = None if args.due.lower() == "none" else args.due
+        if due != task.get("due"):
+            changed.append(f"due: {task.get('due') or 'none'} -> {due or 'none'}")
+        else:
+            due = homedash._UNSET
+
+    refs = list(task.get("refs") or [])
+    for raw in args.add_ref or []:
+        if "=" not in raw:
+            sys.exit(f"--add-ref must be LABEL=URL, got {raw!r}")
+        label, url = raw.split("=", 1)
+        if not any(r["url"] == url for r in refs):
+            refs.append({"label": label, "url": url})
+            changed.append(f"ref added: {label}")
+
     if not changed:
         print(f"unchanged: {args.key}")
         return
@@ -183,6 +231,8 @@ def cmd_edit(args):
         workstream=args.workstream if args.workstream is not None else None,
         tags=tags,
         detail=args.detail,
+        due=due,
+        refs=refs if refs != (task.get("refs") or []) else None,
     )
     print(f"{args.key}: " + "; ".join(changed))
 
@@ -212,22 +262,27 @@ def main():
                    choices=["todo", "doing", "blocked", "done", "not_my_task"])
     s.set_defaults(fn=cmd_set_status)
 
-    n = sub.add_parser("note", help="write a note onto a task")
+    n = sub.add_parser("note", help="append a note line to a task (--replace to overwrite)")
     n.add_argument("--key", required=True)
     n.add_argument("--text", default="")
+    n.add_argument("--replace", action="store_true",
+                   help="overwrite all existing note lines instead of appending")
     n.set_defaults(fn=cmd_note)
 
-    e = sub.add_parser("edit", help="correct workstream, tags and/or detail on an existing task")
+    e = sub.add_parser("edit", help="correct workstream, tags, detail, due or refs on an existing task")
     e.add_argument("--key", required=True)
     e.add_argument("--workstream", default=None)
     e.add_argument("--add-tag", action="append", help="free text, repeatable")
     e.add_argument("--remove-tag", action="append", help="free text, repeatable")
     e.add_argument("--detail", default=None)
+    e.add_argument("--due", default=None, help="YYYY-MM-DD, or 'none' to clear")
+    e.add_argument("--add-ref", action="append", metavar="LABEL=URL",
+                   help="attach a link (e.g. a Jira key); repeatable")
     e.set_defaults(fn=cmd_edit)
 
     args = p.parse_args()
-    due = getattr(args, "due", None)      # only `add` has one
-    if due and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", due):
+    due = getattr(args, "due", None)      # `add` and `edit` have one
+    if due and due.lower() != "none" and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", due):
         p.error(f"--due must be YYYY-MM-DD, got {due!r}")
     args.fn(args)
 
