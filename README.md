@@ -227,6 +227,14 @@ new one).
 unless you pass `--replace`. A task blocked for more than 3 days shows up as
 `stale_blocked` in `sync.py list`, so the scheduled run can flag it.
 
+**The week label has to be moved.** The board's week (`week`, `week_start`,
+`week_end` in `tasks.json`, and the `## This week — ...` heading in the note)
+does not advance by itself. `sync.py list` reports a `week_check` and warns on
+stderr when the board is behind; `sync.py week --roll` relabels it to the
+current ISO week. Rolling never moves, closes or deletes a task — it only
+changes the label, and keeps the old week's "worth knowing" notes under
+`past_notes`. The skill runs it whenever `week_check.current` is false.
+
 **Your real `tasks.json` is gitignored, deliberately.** A live board holds customer
 names, ticket numbers and internal detail. Keep it out of any repo you share.
 

@@ -75,10 +75,22 @@ python3 sync.py add --title "..." --workstream "..." --priority high|medium|low 
     --detail "..." --due YYYY-MM-DD --source jira|email|teams|calendar --ref LABEL=URL
 python3 sync.py set-status --key KEY --status todo|doing|blocked|done
 python3 sync.py note --key KEY --text "..."     # appends one line
+python3 sync.py week --roll                     # relabel the board to the current week
 ```
 
 Run `list` **first**, every time. It prints what is already there. Never add
 something that is on the board under different wording.
+
+### Keeping the week current
+
+The board is labelled with a week, and nothing moves that label on its own.
+`list` returns a `week_check` block; when `week_check.current` is false, run
+`python3 sync.py week --roll` straight after `list`, before anything else.
+
+Rolling only relabels: tasks, statuses and notes stay exactly where they are,
+and last week's "worth knowing" notes are kept under `past_notes` rather than
+deleted. It is safe to run every time — on a current board it changes nothing.
+Say in the report that you rolled the week, and from which week.
 
 `set-status --status blocked` stamps the day the task became blocked. `list`
 then reports `days_blocked`, and `stale_blocked: true` once that passes 3 days.

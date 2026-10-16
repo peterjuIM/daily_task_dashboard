@@ -13,6 +13,14 @@ through here instead.
     python3 sync.py note --key KEY --text "..." --replace  # overwrites every note line
     python3 sync.py edit --key KEY [--workstream "..."] [--add-tag "..."] [--remove-tag "..."]
                                    [--detail "..."] [--due YYYY-MM-DD|none] [--add-ref LABEL=URL]
+    python3 sync.py week                      # does the board cover the current week?
+    python3 sync.py week --roll               # if not, move it to the current week
+
+The board is labelled with a week (tasks.json's week/week_start/week_end, and the
+"## This week — ..." heading in Home.md). Nothing moves that label on its own, so
+`list` reports `week_check` and warns when it is stale, and `week --roll` brings
+it up to the current ISO week. Rolling only relabels: every task, status and note
+stays where it is. Last week's "worth knowing" notes are kept under past_notes.
 
 `note` APPENDS by default. Earlier notes are history (evidence for why a task was
 ticked, what was promised, when) and an unattended run must never wipe them by
@@ -28,8 +36,7 @@ sync does not create duplicates.
 
 `set-status --status blocked` stamps the task with today's date; `list` then
 reports `days_blocked` and `stale_blocked` (true past 3 days) so a task that's
-been stuck doesn't quietly sit there — the board also shows a "follow up"
-warning on any card blocked that long.
+been stuck doesn't quietly sit there.
 """
 
 import argparse
@@ -37,6 +44,7 @@ import json
 import re
 import sys
 import unicodedata
+from datetime import date, timedelta
 
 import homedash
 
@@ -65,13 +73,88 @@ def slugify(text, existing):
     return key
 
 
+def actual_week(today=None):
+    """The current ISO week as (label, monday, friday), e.g. ("2026-W42", 12 Oct, 16 Oct)."""
+    today = today or date.today()
+    year, week, weekday = today.isocalendar()
+    monday = today - timedelta(days=weekday - 1)
+    return f"{year}-W{week:02d}", monday, monday + timedelta(days=4)
+
+
+def week_check(data=None):
+    data = data or homedash.read_tasks()
+    label, monday, friday = actual_week()
+    return {
+        "board": data.get("week"),
+        "board_start": data.get("week_start"),
+        "board_end": data.get("week_end"),
+        "actual": label,
+        "actual_start": monday.isoformat(),
+        "actual_end": friday.isoformat(),
+        "current": data.get("week") == label,
+    }
+
+
+def week_heading(label, monday, friday):
+    """Home.md's section heading, e.g. '## This week — 12–16 Oct (2026-W42)'."""
+    if monday.month == friday.month:
+        span = f"{monday.day}–{friday.day} {friday:%b}"
+    else:
+        span = f"{monday.day} {monday:%b}–{friday.day} {friday:%b}"
+    return f"{homedash.SECTION_START} — {span} ({label})"
+
+
 def cmd_list(args):
     payload = homedash.build_payload()
     rows = [{k: t[k] for k in
              ("key", "title", "status", "workstream", "priority", "due", "tags", "refs",
               "days_blocked", "stale_blocked")}
             for t in payload["tasks"]]
-    print(json.dumps({"week": payload["meta"]["week"], "tasks": rows}, ensure_ascii=False, indent=2))
+    check = week_check()
+    if not check["current"]:
+        print(f"warning: board is labelled {check['board']} but this is {check['actual']} "
+              f"— run `sync.py week --roll`", file=sys.stderr)
+    print(json.dumps({"week": payload["meta"]["week"], "week_check": check, "tasks": rows},
+                     ensure_ascii=False, indent=2))
+
+
+def cmd_week(args):
+    data = homedash.read_tasks()
+    check = week_check(data)
+    if not args.roll or check["current"]:
+        print(json.dumps(check, indent=2))
+        if args.roll:
+            print(f"unchanged: board already covers {check['actual']}")
+        return
+
+    label, monday, friday = actual_week()
+
+    # Home.md first: if its section heading can't be found, stop before touching
+    # tasks.json, so the two never disagree about which week it is.
+    lines = homedash.HOME_MD.read_text().split("\n")
+    heading = next((i for i, l in enumerate(lines) if l.startswith(homedash.SECTION_START)), None)
+    if heading is None:
+        sys.exit(f"Could not find the '{homedash.SECTION_START}' heading in Home.md — aborting without writing.")
+    old_heading = lines[heading]
+    lines[heading] = week_heading(label, monday, friday)
+    homedash.write_home(lines)
+
+    # "Worth knowing this week" notes belong to the old week; keep them as
+    # history rather than deleting them or showing them as current.
+    old_week = data.get("week")
+    if data.get("notes"):
+        data.setdefault("past_notes", {})[old_week or "unknown"] = data["notes"]
+    data["notes"] = []
+    data["week"] = label
+    data["week_start"] = monday.isoformat()
+    data["week_end"] = friday.isoformat()
+    data["generated_from"] = f"Rolled forward from {old_week} on {date.today().isoformat()}"
+    homedash.write_tasks(data)
+
+    print(f"rolled: {old_week} -> {label} ({monday.isoformat()} to {friday.isoformat()})")
+    print(f"Home.md heading: {old_heading!r} -> {lines[heading]!r}")
+    if old_week in data.get("past_notes", {}):
+        print(f"kept {len(data['past_notes'][old_week])} 'worth knowing' note(s) from {old_week} under past_notes")
 
 
 def cmd_add(args):
@@ -243,6 +326,11 @@ def main():
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("list", help="print the current board as JSON").set_defaults(fn=cmd_list)
+
+    w = sub.add_parser("week", help="check whether the board covers the current week")
+    w.add_argument("--roll", action="store_true",
+                   help="if it doesn't, relabel the board to the current week (tasks are untouched)")
+    w.set_defaults(fn=cmd_week)
 
     a = sub.add_parser("add", help="add a task to tasks.json and Home.md together")
     a.add_argument("--title", required=True)
