@@ -48,6 +48,14 @@ STATUS_TO_MARK = {"todo": " ", "doing": "/", "blocked": "!", "done": "x",
 # and build_payload's "days_blocked".
 BLOCKED_WARN_DAYS = 3
 
+# A task that has been done for longer than this moves from Done to the Archive
+# lane — see _record_done_transition and build_payload's "archived". Archive is
+# derived from the date, not a checkbox state, so Home.md still just says [x].
+ARCHIVE_AFTER_DAYS = 7
+# done_since for tasks ticked before the date was tracked: the real day is
+# unknown, so they count as already archived.
+DONE_DATE_UNKNOWN = "unknown"
+
 TASK_RE = re.compile(r"^(?P<indent>\s*)- \[(?P<mark>.)\] (?P<text>.*?)\s*\^(?P<key>[\w-]+)\s*$")
 NOTE_RE = re.compile(r"^\s+- note:\s?(?P<note>.*)$")
 
@@ -178,6 +186,50 @@ def _record_blocked_transition(key, old_status, new_status):
     write_tasks(data)
 
 
+def _record_done_transition(key, old_status, new_status):
+    """Stamp or clear tasks.json's done_since when status crosses into/out of done."""
+    if old_status == new_status:
+        return
+    became_done = new_status == "done"
+    left_done = old_status == "done"
+    if not (became_done or left_done):
+        return
+
+    data = read_tasks()
+    task = next((t for t in data["tasks"] if t["key"] == key), None)
+    if task is None:
+        return
+    task["done_since"] = date.today().isoformat() if became_done else None
+    write_tasks(data)
+
+
+def _stamp_unseen_done(found):
+    """Give a done_since to done tasks that have none — ticked in Obsidian, say.
+
+    The board only learns about such a tick when it next reads Home.md, so the
+    first day it sees the [x] is the best date available. A date or "unknown"
+    already there is never overwritten.
+    """
+    data = read_tasks()
+    today = date.today().isoformat()
+    changed = False
+    for t in data["tasks"]:
+        entry = found.get(t["key"])
+        if entry and entry["status"] == "done" and t.get("done_since") is None:
+            t["done_since"] = today
+            changed = True
+    if changed:
+        write_tasks(data)
+    return data
+
+
+def _days_since(iso):
+    try:
+        return (date.today() - date.fromisoformat(iso)).days
+    except (TypeError, ValueError):
+        return None
+
+
 def apply_change(key, status=None, note=None):
     lines, found = read_home()
     if key not in found:
@@ -198,13 +250,14 @@ def apply_change(key, status=None, note=None):
     write_home(lines)
     if status is not None:
         _record_blocked_transition(key, entry["status"], status)
+        _record_done_transition(key, entry["status"], status)
     _, found = read_home()
     return found.get(key)
 
 
 def build_payload():
-    meta = json.loads(TASKS_JSON.read_text())
     _, found = read_home()
+    meta = _stamp_unseen_done(found)
 
     tasks = []
     for t in meta["tasks"]:
@@ -219,6 +272,15 @@ def build_payload():
             except ValueError:
                 days_blocked = None
 
+        done_since = t.get("done_since")
+        archived = False
+        if status == "done":
+            if done_since == DONE_DATE_UNKNOWN:
+                archived = True
+            else:
+                days_done = _days_since(done_since)
+                archived = days_done is not None and days_done >= ARCHIVE_AFTER_DAYS
+
         tasks.append({
             **{k: t.get(k) for k in
                ("key", "title", "detail", "workstream", "priority", "due", "source", "refs")},
@@ -229,6 +291,8 @@ def build_payload():
             "blocked_since": t.get("blocked_since"),
             "days_blocked": days_blocked,
             "stale_blocked": days_blocked is not None and days_blocked > BLOCKED_WARN_DAYS,
+            "done_since": done_since,
+            "archived": archived,
         })
 
     order = {"high": 0, "medium": 1, "low": 2}

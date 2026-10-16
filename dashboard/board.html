@@ -104,6 +104,8 @@
   .col[data-col="done"] .dot { background: var(--done); }
   .col[data-col="not_my_task"] .dot { background: var(--not_my_task); }
   .col[data-col="fdr"] .dot { background: var(--accent); }
+  .col[data-col="archive"] .dot { background: var(--muted); }
+  .col[data-col="archive"] .card h3 { text-decoration: line-through; color: var(--muted); }
   .count { margin-left: auto; font-size: 13px; background: var(--surface-2); border-radius: 99px; padding: 1px 8px; letter-spacing: 0; }
   .empty { color: var(--muted); font-size: 14px; padding: 10px 4px; font-style: italic; }
 
@@ -283,6 +285,8 @@ const HIDDEN_STATE = "not_my_task";
 const FDR_TAG = "Feature/Defect/Request";
 function isFdr(t) { return (t.tags || []).includes(FDR_TAG); }
 function inFdrLane(t) { return isFdr(t) && t.status !== "done" && t.status !== HIDDEN_STATE; }
+// Must match ARCHIVE_AFTER_DAYS in homedash.py, which decides t.archived.
+const ARCHIVE_AFTER_DAYS = 7;
 // Workstreams come from tasks.json; colours are assigned in that order.
 const PALETTE = ["#c2703a", "#9a5b8c", "#3f7a9a", "#b4462c",
                  "#4a7c59", "#7a6aa8", "#6d6a63", "#8c6d3f"];
@@ -294,6 +298,9 @@ let filterWs = "all";
 let expanded = new Set();
 let showNotMine = false;
 let showFdr = true;
+// Done for a week or more (the helper sets t.archived) — kept out of Done so
+// that column only shows recent wins. Hidden unless asked for.
+let showArchive = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -489,6 +496,14 @@ function renderFilters() {
   nm.setAttribute("aria-pressed", String(showNotMine));
   nm.onclick = () => { showNotMine = !showNotMine; render(); };
   box.appendChild(nm);
+
+  const archiveCount = tasks.filter((t) => t.archived).length;
+  const ar = document.createElement("button");
+  ar.className = "chip";
+  ar.textContent = (showArchive ? "Hide" : "Show") + " archive" + (archiveCount ? ` (${archiveCount})` : "");
+  ar.setAttribute("aria-pressed", String(showArchive));
+  ar.onclick = () => { showArchive = !showArchive; render(); };
+  box.appendChild(ar);
 }
 
 function card(t) {
@@ -516,8 +531,17 @@ function card(t) {
   const due = dayLabel(t.due);
   if (due) {
     const tag = document.createElement("span");
-    tag.className = "tag" + (due.soon && t.status !== "done" ? " due-soon" : "");
-    tag.textContent = due.text;
+    const finished = t.status === "done";
+    tag.className = "tag" + (due.soon && !finished ? " due-soon" : "");
+    // "overdue"/"today" means nothing once it's finished — keep just the date.
+    tag.textContent = finished ? due.text.split(" · ")[0] : due.text;
+    chips.appendChild(tag);
+  }
+  if (t.archived && t.done_since && t.done_since !== "unknown") {
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = "done " + new Date(t.done_since + "T00:00:00")
+      .toLocaleDateString(undefined, { day: "numeric", month: "short" });
     chips.appendChild(tag);
   }
   if (t.priority === "high" || t.priority === "medium") {
@@ -682,7 +706,8 @@ function render() {
   renderFilters();
   const board = $("board");
   board.textContent = "";
-  board.style.setProperty("--lanes", COLUMNS.length + (showFdr ? 1 : 0) + (showNotMine ? 1 : 0));
+  board.style.setProperty("--lanes",
+    COLUMNS.length + (showFdr ? 1 : 0) + (showNotMine ? 1 : 0) + (showArchive ? 1 : 0));
 
   const shown = tasks.filter((t) => filterWs === "all" || t.workstream === filterWs);
 
@@ -698,8 +723,9 @@ function render() {
     head.append(col.label);
     const count = document.createElement("span");
     count.className = "count";
-    // FDR-tagged items sit in their own lane instead, so they don't clutter this one.
-    const items = shown.filter((t) => t.status === col.id && !inFdrLane(t));
+    // FDR-tagged items sit in their own lane instead, so they don't clutter this one;
+    // tasks done for over a week move on to the Archive lane.
+    const items = shown.filter((t) => t.status === col.id && !inFdrLane(t) && !t.archived);
     count.textContent = items.length;
     head.appendChild(count);
     box.appendChild(head);
@@ -793,6 +819,38 @@ function render() {
       const p = document.createElement("p");
       p.className = "empty";
       p.textContent = "nothing hidden";
+      box.appendChild(p);
+    }
+    for (const t of items) box.appendChild(card(t));
+    board.appendChild(box);
+  }
+
+  if (showArchive) {
+    const box = document.createElement("section");
+    box.className = "col";
+    box.dataset.col = "archive";
+
+    const head = document.createElement("header");
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    head.appendChild(dot);
+    head.append("Archive");
+    const count = document.createElement("span");
+    count.className = "count";
+    // Most recently finished first; "unknown" (ticked before dates were kept) last.
+    const items = shown.filter((t) => t.archived)
+      .sort((a, b) => (b.done_since === "unknown" ? "" : b.done_since || "")
+        .localeCompare(a.done_since === "unknown" ? "" : a.done_since || ""));
+    count.textContent = items.length;
+    head.appendChild(count);
+    box.appendChild(head);
+    // No drop target: a card lands here by itself a week after it's done.
+    // Drag one back to a status column to reopen it.
+
+    if (!items.length) {
+      const p = document.createElement("p");
+      p.className = "empty";
+      p.textContent = `nothing done for over ${ARCHIVE_AFTER_DAYS} days`;
       box.appendChild(p);
     }
     for (const t of items) box.appendChild(card(t));
