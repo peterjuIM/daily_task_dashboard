@@ -47,36 +47,36 @@
   * { box-sizing: border-box; }
   body {
     margin: 0; background: var(--bg); color: var(--text);
-    font: 15px/1.5 ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+    font: 17px/1.5 ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
   .wrap { max-width: 1400px; margin: 0 auto; padding: 28px 20px 40px; }
 
-  h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: -0.01em; }
-  .sub { color: var(--muted); font-size: 13.5px; margin: 0 0 14px; }
-  .sub code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+  h1 { margin: 0 0 4px; font-size: 24.5px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 15px; margin: 0 0 14px; }
+  .sub code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-size: 14px; }
 
   .bar { height: 5px; border-radius: 99px; background: var(--surface-2); overflow: hidden; margin: 12px 0 6px; }
   .bar > i { display: block; height: 100%; background: var(--done); transition: width .3s; }
-  .bar-label { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+  .bar-label { font-size: 14.5px; color: var(--muted); margin-bottom: 18px; }
 
   details.notes {
     background: var(--accent-soft); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 10px 14px; margin-bottom: 16px; font-size: 13.5px;
+    border-radius: var(--radius); padding: 10px 14px; margin-bottom: 16px; font-size: 15px;
   }
   details.notes summary { cursor: pointer; color: var(--muted); font-weight: 500; }
   details.notes ul { margin: 8px 0 2px; padding-left: 18px; }
   details.notes li + li { margin-top: 4px; }
 
   .offline { border: 1px solid var(--high); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 20px; }
-  .offline h2 { margin: 0 0 8px; font-size: 16px; color: var(--high); }
-  .offline p { margin: 0 0 8px; font-size: 14px; }
-  .offline code { display: inline-block; background: var(--surface-2); padding: 2px 7px; border-radius: 5px; font-size: 13px; }
+  .offline h2 { margin: 0 0 8px; font-size: 18px; color: var(--high); }
+  .offline p { margin: 0 0 8px; font-size: 15.5px; }
+  .offline code { display: inline-block; background: var(--surface-2); padding: 2px 7px; border-radius: 5px; font-size: 14.5px; }
 
   .filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 18px; }
   .chip {
     border: 1px solid var(--border); background: var(--surface); color: var(--muted);
-    border-radius: 99px; padding: 4px 12px; font-size: 12.5px; cursor: pointer; font-family: inherit;
+    border-radius: 99px; padding: 4px 12px; font-size: 14px; cursor: pointer; font-family: inherit;
   }
   .chip:hover { border-color: var(--accent); color: var(--text); }
   .chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--bg); font-weight: 500; }
@@ -96,7 +96,7 @@
   .col.over { border-color: var(--accent); background: var(--accent-soft); }
   .col > header {
     display: flex; align-items: center; gap: 7px; padding: 2px 4px 10px;
-    font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; color: var(--muted);
+    font-size: 13.5px; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; color: var(--muted);
   }
   .dot { width: 8px; height: 8px; border-radius: 99px; background: var(--muted); flex: none; }
   .col[data-col="doing"] .dot { background: var(--doing); }
@@ -104,8 +104,8 @@
   .col[data-col="done"] .dot { background: var(--done); }
   .col[data-col="not_my_task"] .dot { background: var(--not_my_task); }
   .col[data-col="fdr"] .dot { background: var(--accent); }
-  .count { margin-left: auto; font-size: 11.5px; background: var(--surface-2); border-radius: 99px; padding: 1px 8px; letter-spacing: 0; }
-  .empty { color: var(--muted); font-size: 12.5px; padding: 10px 4px; font-style: italic; }
+  .count { margin-left: auto; font-size: 13px; background: var(--surface-2); border-radius: 99px; padding: 1px 8px; letter-spacing: 0; }
+  .empty { color: var(--muted); font-size: 14px; padding: 10px 4px; font-style: italic; }
 
   .card {
     background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--ws, var(--border));
@@ -115,10 +115,10 @@
   .card.dragging { opacity: .4; }
   .card[data-orphan="true"] { border-style: dashed; cursor: default; }
 
-  .card h3 { margin: 0 0 6px; font-size: 13.5px; font-weight: 500; line-height: 1.4; }
+  .card h3 { margin: 0 0 6px; font-size: 15px; font-weight: 500; line-height: 1.4; }
   .col[data-col="done"] .card h3 { text-decoration: line-through; color: var(--muted); }
 
-  .chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 11px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 12.5px; }
   .tag { border-radius: 4px; padding: 1px 6px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
   .tag.p-high { color: var(--high); border-color: color-mix(in srgb, var(--high) 35%, transparent); }
   .tag.p-medium { color: var(--medium); border-color: color-mix(in srgb, var(--medium) 35%, transparent); }
@@ -129,7 +129,7 @@
 
   .move { margin-left: auto; display: flex; gap: 2px; }
   .move button {
-    font: inherit; font-size: 12px; line-height: 1; width: 20px; height: 20px; cursor: pointer;
+    font: inherit; font-size: 13.5px; line-height: 1; width: 20px; height: 20px; cursor: pointer;
     border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--muted);
     display: grid; place-items: center;
   }
@@ -137,49 +137,78 @@
   .move button:disabled { opacity: .3; cursor: default; }
 
   .card .body { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
-  .card .detail { color: var(--muted); font-size: 12.5px; margin: 0 0 8px; }
+  .card .detail { color: var(--muted); font-size: 14px; margin: 0 0 8px; }
   .note {
-    width: 100%; resize: vertical; min-height: 32px; font: inherit; font-size: 12.5px;
+    width: 100%; resize: vertical; min-height: 32px; font: inherit; font-size: 14px;
     color: var(--text); background: var(--surface-2); border: 1px solid var(--border);
     border-radius: 6px; padding: 6px 8px;
   }
   .note::placeholder { color: var(--muted); }
   .note:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
-  .hint { font-size: 11px; color: var(--muted); margin: 6px 0 0; }
+  /* On the card the note is a read-only preview; clicking it opens the editor. */
+  .note-preview { cursor: text; white-space: pre-wrap; max-height: 9em; overflow: hidden; }
+  .note-preview:hover { border-color: var(--accent); }
+  .note-preview.empty-note { color: var(--muted); }
+
+  .note-dialog {
+    width: min(960px, 92vw); max-height: 90vh; padding: 0; border: 1px solid var(--border);
+    border-radius: 14px; background: var(--surface); color: var(--text);
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  }
+  .note-dialog::backdrop { background: rgba(20,18,16,.55); }
+  .note-dialog form { display: flex; flex-direction: column; gap: 12px; padding: 20px 22px 18px; }
+  .note-dialog h2 { margin: 0; font-size: 19px; font-weight: 600; line-height: 1.35; }
+  .note-dialog .nd-sub { margin: -6px 0 0; color: var(--muted); font-size: 14px; }
+  .note-dialog textarea {
+    width: 100%; height: min(60vh, 560px); resize: vertical; font: inherit; font-size: 16px; line-height: 1.6;
+    color: var(--text); background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px;
+  }
+  .note-dialog textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .note-dialog .nd-foot { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--muted); }
+  .note-dialog .nd-count.over { color: var(--high); font-weight: 600; }
+  .note-dialog .nd-foot .spacer { flex: 1; }
+  .note-dialog button {
+    font: inherit; font-size: 15px; border-radius: 8px; padding: 7px 16px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  }
+  .note-dialog button.primary { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 500; }
+  .note-dialog button:disabled { opacity: .4; cursor: default; }
+  .hint { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
 
   .field { margin: 0 0 8px; }
-  .field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+  .field label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 3px; }
   .ws-edit {
-    font: inherit; font-size: 12.5px; color: var(--text); background: var(--surface-2);
+    font: inherit; font-size: 14px; color: var(--text); background: var(--surface-2);
     border: 1px solid var(--border); border-radius: 6px; padding: 5px 7px; width: 100%;
   }
   .tags-edit { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
   .user-tag {
     display: inline-flex; align-items: center; gap: 4px; border-radius: 4px;
     padding: 2px 4px 2px 7px; background: var(--accent-soft); color: var(--accent);
-    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); font-size: 11.5px;
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); font-size: 13px;
   }
   .user-tag button { all: unset; cursor: pointer; line-height: 1; padding: 0 2px; opacity: .6; }
   .user-tag button:hover { opacity: 1; }
   .tag-add {
-    font: inherit; font-size: 11px; border: 1px dashed var(--border); background: transparent;
+    font: inherit; font-size: 12.5px; border: 1px dashed var(--border); background: transparent;
     color: var(--muted); border-radius: 4px; padding: 2px 7px; cursor: pointer;
   }
   .tag-add:hover { border-color: var(--accent); color: var(--text); }
   .tag-input {
-    font: inherit; font-size: 11px; border: 1px solid var(--border); background: var(--surface);
+    font: inherit; font-size: 12.5px; border: 1px solid var(--border); background: var(--surface);
     color: var(--text); border-radius: 4px; padding: 2px 6px; width: 110px;
   }
 
   .toast {
-    position: fixed; bottom: 14px; right: 16px; font-size: 12px; color: var(--muted);
+    position: fixed; bottom: 14px; right: 16px; font-size: 13.5px; color: var(--muted);
     background: var(--surface); border: 1px solid var(--border); padding: 5px 11px;
     border-radius: 99px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 60vw;
   }
   .toast.show { opacity: 1; }
   .toast.bad { color: var(--high); border-color: var(--high); }
 
-  footer { margin-top: 28px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+  footer { margin-top: 28px; color: var(--muted); font-size: 13.5px; border-top: 1px solid var(--border); padding-top: 12px; }
   @media print {
     .filters, .move, .note, footer, details.notes { display: none !important; }
     body { background: #fff; }
@@ -210,6 +239,21 @@
   <footer id="foot" hidden></footer>
 </div>
 <div class="toast" id="toast"></div>
+
+<dialog class="note-dialog" id="noteDialog">
+  <form method="dialog" id="noteForm">
+    <h2 id="ndTitle"></h2>
+    <p class="nd-sub">Note — saved into Home.md. Each line becomes one note line.</p>
+    <textarea id="ndText" placeholder="Write your note…"></textarea>
+    <div class="nd-foot">
+      <span id="ndCount" class="nd-count"></span>
+      <span>⌘/Ctrl + Enter to save · Esc to cancel</span>
+      <span class="spacer"></span>
+      <button type="button" id="ndCancel">Cancel</button>
+      <button type="submit" class="primary" id="ndSave">Save</button>
+    </div>
+  </form>
+</dialog>
 
 <script>
 const COLUMNS = [
@@ -289,16 +333,71 @@ async function move(task, status) {
   }
 }
 
-async function saveNote(task, note, field) {
-  if (note === (task.note || "")) return;
+async function saveNote(task, note) {
+  if (note === (task.note || "")) return true;
   try {
     await patch(task.key, { note });
     task.note = note;
     toast(note ? "Note saved to Home.md" : "Note removed");
+    return true;
   } catch (err) {
-    field.value = task.note || "";
     toast("Note not saved: " + err.message, true);
+    return false;
   }
+}
+
+// The helper caps a note at this many characters; anything past it would be cut.
+const NOTE_MAX = 2000;
+let noteTask = null;
+
+function openNoteEditor(task) {
+  noteTask = task;
+  $("ndTitle").textContent = task.title;
+  $("ndText").value = task.note || "";
+  updateNoteCount();
+  $("noteDialog").showModal();
+  const ta = $("ndText");
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+}
+
+function updateNoteCount() {
+  const n = $("ndText").value.trim().length;
+  const over = n > NOTE_MAX;
+  $("ndCount").textContent = `${n} / ${NOTE_MAX}` + (over ? " — too long to save" : "");
+  $("ndCount").classList.toggle("over", over);
+  $("ndSave").disabled = over;
+}
+
+function closeNoteEditor() {
+  $("noteDialog").close();
+  noteTask = null;
+}
+
+async function submitNote() {
+  if (!noteTask || $("ndSave").disabled) return;
+  $("ndSave").disabled = true;
+  const text = $("ndText").value.trim();
+  const ok = await saveNote(noteTask, text);
+  $("ndSave").disabled = false;
+  if (!ok) return;                           // keep the dialog open so nothing typed is lost
+  // A focus-triggered reload may have replaced `tasks` while the dialog was open.
+  const current = tasks.find((x) => x.key === noteTask.key);
+  if (current) current.note = text;
+  closeNoteEditor();
+  render();
+}
+
+function setupNoteEditor() {
+  $("ndText").addEventListener("input", updateNoteCount);
+  $("ndText").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submitNote(); }
+  });
+  $("noteForm").addEventListener("submit", (e) => { e.preventDefault(); submitNote(); });
+  $("ndCancel").onclick = closeNoteEditor;
+  // Clicking the dimmed backdrop cancels, same as Esc.
+  $("noteDialog").addEventListener("click", (e) => { if (e.target === $("noteDialog")) closeNoteEditor(); });
+  $("noteDialog").addEventListener("close", () => { noteTask = null; });
 }
 
 // Workstream and tags live in tasks.json, not Home.md — they're wording, not a
@@ -546,13 +645,13 @@ function card(t) {
       tagsField.appendChild(tagsRow);
       body.appendChild(tagsField);
 
-      const note = document.createElement("textarea");
-      note.className = "note";
-      note.rows = 1;
-      note.placeholder = "Note… (saved into Home.md)";
-      note.value = t.note || "";
-      note.onclick = (e) => e.stopPropagation();
-      note.onblur = () => saveNote(t, note.value.trim(), note);
+      const note = document.createElement("div");
+      note.className = "note note-preview" + (t.note ? "" : " empty-note");
+      note.tabIndex = 0;
+      note.title = "Click to edit";
+      note.textContent = t.note || "Note… (click to edit, saved into Home.md)";
+      note.onclick = (e) => { e.stopPropagation(); openNoteEditor(t); };
+      note.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); openNoteEditor(t); } };
       body.appendChild(note);
     }
     el.appendChild(body);
@@ -756,6 +855,7 @@ async function load(quiet) {
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(true); });
 window.addEventListener("focus", () => load(true));
 
+setupNoteEditor();
 load(false);
 </script>
 </body>
