@@ -116,7 +116,7 @@ your notes are the same act.
 ```
 dashboard/homedash.py   local server + read/write API
 dashboard/sync.py       safe add / set-status / note / edit, used by the scheduled task
-dashboard/board.html    the board: To do, Doing, Blocked, Done
+dashboard/board.html    the board: To do, Doing, Blocked, Done, plus side lanes
 example/                a working note and tasks.json to try it against
 ```
 
@@ -168,6 +168,50 @@ Drag a card into the lane to tag it; drag it back out to untag it and resume
 normal tracking. It's just a tag — put anything else on a card that's useful to
 you, there's no fixed list.
 
+Workstreams are not free text: `sync.py` only accepts the names in the
+`workstreams` list at the top of `tasks.json`, and the board colours them in that
+order. The skill files tickets in a backlog or feature-request state under a
+`Backlog` workstream — add `"Backlog"` to that list if you want to use it, or
+`sync.py` will refuse the move.
+
+### Notes
+
+Click a card to expand it, then click its note to edit. The note opens in a large
+popup editor rather than a small box on the card:
+
+- The task title sits at the top, and the card's **detail** text from
+  `tasks.json` is shown below it, read-only, for context. Only the note is
+  editable here.
+- Each line you type becomes one `- note:` line under the task in your note file.
+  Blank lines are dropped.
+- **⌘/Ctrl + Enter** or **Save** saves; **Esc**, **Cancel** or a click outside
+  the popup discards.
+- A counter shows the length. The server keeps at most 2,000 characters, so Save
+  is disabled past that rather than letting older lines be cut off.
+- If a save fails, the popup stays open with your text in it.
+
+### Archive
+
+A task that has been done for 7 days or more moves out of **Done** into an
+**Archive** lane, so Done only shows recent work. Archive is hidden by default;
+the **Show archive** chip toggles it and shows the count. Archived tasks still
+count as done in the progress bar.
+
+Archive is worked out from a date, not stored as a state — the note still just
+says `[x]`, so Obsidian is unaffected. The date is `done_since` in `tasks.json`:
+
+- Ticking a task from the board or `sync.py set-status` stamps today's date.
+  Moving it out of Done clears the date; ticking it again stamps a new one.
+- A task ticked directly in Obsidian is dated the first time the board next reads
+  the note — the best date available.
+- `"done_since": "unknown"` marks a task finished before dates were kept. It
+  counts as archived straight away.
+
+There is no dropping onto the Archive lane — cards arrive there by themselves.
+Drag an archived card back to a status column to reopen it. The 7-day threshold
+is `ARCHIVE_AFTER_DAYS`, set in both `homedash.py` and `board.html`; change both
+together.
+
 ### Rules that matter
 
 **Only mark something done on clear evidence.** An unattended run that wrongly ticks
@@ -181,7 +225,7 @@ new one).
 
 **Notes are a log.** `sync.py note` appends a line; it never wipes earlier notes
 unless you pass `--replace`. A task blocked for more than 3 days shows up as
-`stale_blocked` in `sync.py list` and gets a "follow up" warning on the board.
+`stale_blocked` in `sync.py list`, so the scheduled run can flag it.
 
 **Your real `tasks.json` is gitignored, deliberately.** A live board holds customer
 names, ticket numbers and internal detail. Keep it out of any repo you share.
