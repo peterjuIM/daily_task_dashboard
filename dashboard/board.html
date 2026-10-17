@@ -68,10 +68,89 @@
   details.notes ul { margin: 8px 0 2px; padding-left: 18px; }
   details.notes li + li { margin-top: 4px; }
 
+  /* ---- important notices + who's away: pinned above the board ---- */
+  .pinned {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px 16px; margin-bottom: 14px; background: var(--surface);
+  }
+  .pinned > header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .pinned > header h2 {
+    margin: 0; font-size: 13.5px; text-transform: uppercase; letter-spacing: .08em;
+    font-weight: 600; color: var(--muted);
+  }
+  .pinned > header .spacer { flex: 1; }
+  .pin-btn {
+    font: inherit; font-size: 13px; border: 1px dashed var(--border); background: transparent;
+    color: var(--muted); border-radius: 6px; padding: 2px 9px; cursor: pointer;
+  }
+  .pin-btn:hover { border-color: var(--accent); color: var(--text); }
+  .pin-empty { color: var(--muted); font-size: 14px; font-style: italic; margin: 2px 0; }
+
+  .pinned.notices {
+    border-color: color-mix(in srgb, var(--high) 45%, var(--border));
+    border-left: 4px solid var(--high);
+    background: color-mix(in srgb, var(--high) 6%, var(--surface));
+  }
+  .pinned.notices > header h2 { color: var(--high); }
+  .notice + .notice { border-top: 1px dashed var(--border); margin-top: 10px; padding-top: 10px; }
+  .notice h3 { margin: 0 0 3px; font-size: 16px; font-weight: 600; }
+  .notice p { margin: 0 0 4px; font-size: 15px; white-space: pre-wrap; }
+  .notice .nmeta { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 13px; color: var(--muted); }
+  .notice .nmeta .spacer { flex: 1; }
+
+  .away-group { display: grid; grid-template-columns: 92px 1fr; gap: 2px 12px; font-size: 15px; }
+  .away-group + .away-group { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
+  .away-group > .when { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; padding-top: 2px; }
+  .away-group ul { list-style: none; margin: 0; padding: 0; }
+  .away-group li { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; position: relative; padding-right: 22px; }
+  .away-group li .who { font-weight: 600; }
+  .away-group li .dates { color: var(--text); }
+  .away-group li .anote { color: var(--muted); font-size: 14px; }
+  .away-group li .now { font-size: 12px; color: var(--blocked); border: 1px solid color-mix(in srgb, var(--blocked) 40%, transparent); border-radius: 4px; padding: 0 5px; }
+  .away-group li button { all: unset; position: absolute; right: 0; top: 0; cursor: pointer; color: var(--muted); opacity: 0; font-size: 14px; padding: 0 4px; }
+  .away-group li:hover button, .away-group li button:focus { opacity: .7; }
+  .away-group li button:hover { opacity: 1; color: var(--high); }
+
+  .form-dialog { width: min(560px, 92vw); padding: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--text); box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+  .form-dialog::backdrop { background: rgba(20,18,16,.55); }
+  .form-dialog form { display: flex; flex-direction: column; gap: 10px; padding: 20px 22px 18px; }
+  .form-dialog h2 { margin: 0; font-size: 18px; }
+  .form-dialog .fd-sub { margin: -4px 0 2px; color: var(--muted); font-size: 14px; }
+  .form-dialog label { font-size: 12.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+  .form-dialog input, .form-dialog textarea {
+    width: 100%; font: inherit; font-size: 15px; color: var(--text); background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; margin-top: 3px;
+  }
+  .form-dialog textarea { min-height: 110px; resize: vertical; }
+  .form-dialog .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-dialog .fd-foot { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+  .form-dialog button { font: inherit; font-size: 15px; border-radius: 8px; padding: 7px 16px; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  .form-dialog button.primary { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 500; }
+  .form-dialog .fd-err { color: var(--high); font-size: 14px; min-height: 1em; margin: 0; }
+
   .offline { border: 1px solid var(--high); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 20px; }
   .offline h2 { margin: 0 0 8px; font-size: 18px; color: var(--high); }
   .offline p { margin: 0 0 8px; font-size: 15.5px; }
   .offline code { display: inline-block; background: var(--surface-2); padding: 2px 7px; border-radius: 5px; font-size: 14.5px; }
+
+  .search { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-bottom: 10px; }
+  .search .sfield { position: relative; display: flex; align-items: center; flex: 1 1 280px; max-width: 520px; }
+  .search input {
+    flex: 1; width: 100%; font: inherit; font-size: 15px; color: var(--text);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 99px;
+    padding: 7px 34px 7px 34px;
+  }
+  .search input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .search .icon { position: absolute; left: 12px; color: var(--muted); font-size: 14px; pointer-events: none; }
+  .search input::-webkit-search-cancel-button { display: none; }
+  .search .clear {
+    all: unset; position: absolute; right: 10px;
+    cursor: pointer; color: var(--muted); font-size: 16px; padding: 0 6px;
+  }
+  .search .clear:hover { color: var(--text); }
+  .search .result { font-size: 14px; color: var(--muted); }
+  .search .result b { color: var(--text); font-weight: 600; }
+  mark.hit { background: color-mix(in srgb, var(--accent) 28%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
 
   .filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 18px; }
   .chip {
@@ -218,7 +297,7 @@
 
   footer { margin-top: 28px; color: var(--muted); font-size: 13.5px; border-top: 1px solid var(--border); padding-top: 12px; }
   @media print {
-    .filters, .move, .note, footer, details.notes { display: none !important; }
+    .search, .filters, .move, .note, footer, details.notes, .pin-btn, .away-group li button { display: none !important; }
     body { background: #fff; }
     .board { grid-template-columns: repeat(4, 1fr); }
     .card { break-inside: avoid; }
@@ -241,12 +320,46 @@
     <p class="sub" id="offlineWhy"></p>
   </div>
 
+  <section class="pinned notices" id="notices" hidden>
+    <header><h2>⚠ Important notices</h2><span class="spacer"></span>
+      <button type="button" class="pin-btn" id="addNotice">+ Add notice</button></header>
+    <div id="noticeList"></div>
+  </section>
+
+  <section class="pinned away" id="away" hidden>
+    <header><h2>Who's away</h2><span class="spacer"></span>
+      <button type="button" class="pin-btn" id="addAway">+ Add</button></header>
+    <div id="awayList"></div>
+  </section>
+
   <details class="notes" id="notes" hidden><summary>Worth knowing this week</summary></details>
+  <div class="search" id="searchBox" hidden>
+    <span class="sfield">
+      <span class="icon" aria-hidden="true">🔍</span>
+      <input type="search" id="search" placeholder="Search titles, details, notes, tags, Jira keys…   ( / )"
+             autocomplete="off" spellcheck="false" aria-label="Search the board">
+      <button type="button" class="clear" id="searchClear" title="Clear (Esc)" hidden>×</button>
+    </span>
+    <span class="result" id="searchResult" aria-live="polite"></span>
+  </div>
   <div class="filters" id="filters" hidden></div>
   <div class="board" id="board"></div>
   <footer id="foot" hidden></footer>
 </div>
 <div class="toast" id="toast"></div>
+
+<dialog class="form-dialog" id="formDialog">
+  <form method="dialog" id="fdForm" autocomplete="off">
+    <h2 id="fdTitle"></h2>
+    <p class="fd-sub" id="fdSub"></p>
+    <div id="fdFields"></div>
+    <p class="fd-err" id="fdErr"></p>
+    <div class="fd-foot">
+      <button type="button" id="fdCancel">Cancel</button>
+      <button type="submit" class="primary" id="fdSave">Save</button>
+    </div>
+  </form>
+</dialog>
 
 <dialog class="note-dialog" id="noteDialog">
   <form method="dialog" id="noteForm">
@@ -295,6 +408,39 @@ let WS = {};
 let tasks = [];
 let meta = {};
 let filterWs = "all";
+// Live keyword filter. Every word typed must appear somewhere on the card —
+// title, detail, note, tags, Jira keys or workstream — in any order, any case.
+let query = "";
+function queryWords() { return query.toLowerCase().split(/\s+/).filter(Boolean); }
+function haystack(t) {
+  return [t.title, t.detail, t.note, t.workstream, t.key,
+          ...(t.tags || []), ...(t.refs || []).map((r) => r.label)]
+    .filter(Boolean).join("\n").toLowerCase();
+}
+function matches(t) {
+  const words = queryWords();
+  if (!words.length) return true;
+  const hay = haystack(t);
+  return words.every((w) => hay.includes(w));
+}
+// Wrap each matched word in <mark> inside a text node's parent, safely (no innerHTML).
+function highlight(el, text) {
+  const words = queryWords();
+  if (!words.length) { el.textContent = text; return; }
+  const re = new RegExp("(" + words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "gi");
+  el.textContent = "";
+  for (const part of text.split(re)) {
+    if (!part) continue;
+    if (words.includes(part.toLowerCase())) {
+      const m = document.createElement("mark");
+      m.className = "hit";
+      m.textContent = part;
+      el.appendChild(m);
+    } else {
+      el.appendChild(document.createTextNode(part));
+    }
+  }
+}
 let expanded = new Set();
 let showNotMine = false;
 let showFdr = true;
@@ -522,7 +668,7 @@ function card(t) {
   el.addEventListener("dragend", () => el.classList.remove("dragging"));
 
   const h = document.createElement("h3");
-  h.textContent = t.title;
+  highlight(h, t.title);
   el.appendChild(h);
 
   const chips = document.createElement("div");
@@ -702,14 +848,48 @@ function card(t) {
   return el;
 }
 
+function renderSearchResult(shown) {
+  const out = $("searchResult");
+  $("searchClear").hidden = !query;
+  if (!queryWords().length) { out.textContent = ""; return; }
+  // Matches sitting in lanes that are switched off would otherwise look like "no result".
+  const hidden = [];
+  const n = (f) => shown.filter(f).length;
+  if (!showArchive && n((t) => t.archived)) hidden.push(`${n((t) => t.archived)} in archive`);
+  if (!showNotMine && n((t) => t.status === HIDDEN_STATE)) hidden.push(`${n((t) => t.status === HIDDEN_STATE)} in not my task`);
+  if (!showFdr && n((t) => inFdrLane(t))) hidden.push(`${n((t) => inFdrLane(t))} in feature/defect/request`);
+  out.textContent = "";
+  const b = document.createElement("b");
+  b.textContent = shown.length;
+  out.append(b, shown.length === 1 ? " match" : " matches");
+  if (hidden.length) out.append(` · ${hidden.join(", ")} (lane hidden)`);
+}
+
+function setupSearch() {
+  const input = $("search");
+  input.addEventListener("input", () => { query = input.value; render(); });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { input.value = ""; query = ""; render(); input.blur(); }
+  });
+  $("searchClear").onclick = () => { input.value = ""; query = ""; render(); input.focus(); };
+  // "/" jumps to the search box from anywhere, unless you're already typing somewhere.
+  document.addEventListener("keydown", (e) => {
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)
+      || document.activeElement.isContentEditable || document.querySelector("dialog[open]");
+    if (e.key === "/" && !typing) { e.preventDefault(); input.focus(); input.select(); }
+  });
+}
+
 function render() {
   renderFilters();
+  $("searchBox").hidden = false;
   const board = $("board");
   board.textContent = "";
   board.style.setProperty("--lanes",
     COLUMNS.length + (showFdr ? 1 : 0) + (showNotMine ? 1 : 0) + (showArchive ? 1 : 0));
 
-  const shown = tasks.filter((t) => filterWs === "all" || t.workstream === filterWs);
+  const shown = tasks.filter((t) => (filterWs === "all" || t.workstream === filterWs) && matches(t));
+  renderSearchResult(shown);
 
   for (const col of COLUMNS) {
     const box = document.createElement("section");
@@ -746,7 +926,7 @@ function render() {
     if (!items.length) {
       const p = document.createElement("p");
       p.className = "empty";
-      p.textContent = col.id === "done" ? "nothing finished yet" : "empty";
+      p.textContent = query ? "no matches" : col.id === "done" ? "nothing finished yet" : "empty";
       box.appendChild(p);
     }
     for (const t of items) box.appendChild(card(t));
@@ -782,7 +962,7 @@ function render() {
     if (!items.length) {
       const p = document.createElement("p");
       p.className = "empty";
-      p.textContent = "nothing waiting on another team";
+      p.textContent = query ? "no matches" : "nothing waiting on another team";
       box.appendChild(p);
     }
     for (const t of items) box.appendChild(card(t));
@@ -818,7 +998,7 @@ function render() {
     if (!items.length) {
       const p = document.createElement("p");
       p.className = "empty";
-      p.textContent = "nothing hidden";
+      p.textContent = query ? "no matches" : "nothing hidden";
       box.appendChild(p);
     }
     for (const t of items) box.appendChild(card(t));
@@ -850,7 +1030,7 @@ function render() {
     if (!items.length) {
       const p = document.createElement("p");
       p.className = "empty";
-      p.textContent = `nothing done for over ${ARCHIVE_AFTER_DAYS} days`;
+      p.textContent = query ? "no matches" : `nothing done for over ${ARCHIVE_AFTER_DAYS} days`;
       box.appendChild(p);
     }
     for (const t of items) box.appendChild(card(t));
@@ -866,6 +1046,249 @@ function render() {
   $("bar").style.width = pct + "%";
   $("barLabel").textContent =
     `${done} of ${mine.length} done · ${pct}%` + (blocked ? ` · ${blocked} blocked` : "");
+}
+
+// ---- important notices + who's away ----
+
+async function post(url, body, method) {
+  const res = await fetch(url, {
+    method: method || "POST",
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+function isoDay(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function parseDay(iso) { return new Date(iso + "T00:00:00"); }
+// "Mon 5" or "Mon 5 Oct" — fixed order, so ranges read the same in any locale.
+function shortDay(iso, withMonth) {
+  const d = parseDay(iso);
+  const wd = d.toLocaleDateString("en-GB", { weekday: "short" });
+  const mon = d.toLocaleDateString("en-GB", { month: "short" });
+  return `${wd} ${d.getDate()}` + (withMonth ? ` ${mon}` : "");
+}
+function rangeText(a) {
+  if (a.from === a.to) return shortDay(a.from, true);
+  const sameMonth = a.from.slice(0, 7) === a.to.slice(0, 7);
+  return `${shortDay(a.from, !sameMonth)} – ${shortDay(a.to, true)}`;
+}
+
+// One small modal for every add/retire form, so each needs only a field list.
+let fdSubmit = null;
+function openForm({ title, sub, fields, save, onSubmit }) {
+  $("fdTitle").textContent = title;
+  $("fdSub").textContent = sub || "";
+  $("fdSub").hidden = !sub;
+  $("fdErr").textContent = "";
+  $("fdSave").textContent = save || "Save";
+  const box = $("fdFields");
+  box.textContent = "";
+  let row = null;
+  for (const f of fields) {
+    const wrap = document.createElement("div");
+    const label = document.createElement("label");
+    label.textContent = f.label;
+    const input = document.createElement(f.type === "textarea" ? "textarea" : "input");
+    if (f.type !== "textarea") input.type = f.type || "text";
+    input.name = f.name;
+    input.autocomplete = "off";               // never let the browser fill "recorded in" for you
+    input.required = !!f.required;
+    input.placeholder = f.placeholder || "";
+    input.value = f.value || "";
+    label.appendChild(input);
+    wrap.appendChild(label);
+    if (f.half) {
+      if (!row) { row = document.createElement("div"); row.className = "row2"; box.appendChild(row); }
+      row.appendChild(wrap);
+      if (row.children.length === 2) row = null;
+    } else {
+      row = null;
+      box.appendChild(wrap);
+    }
+  }
+  fdSubmit = onSubmit;
+  $("formDialog").showModal();
+  const first = box.querySelector("input, textarea");
+  if (first) first.focus();
+}
+
+function setupForm() {
+  $("fdForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!fdSubmit) return;
+    const values = Object.fromEntries(new FormData($("fdForm")).entries());
+    $("fdSave").disabled = true;
+    try {
+      await fdSubmit(values);
+      $("formDialog").close();
+      await load(true);
+    } catch (err) {
+      $("fdErr").textContent = err.message;      // keep the dialog open so nothing typed is lost
+    } finally {
+      $("fdSave").disabled = false;
+    }
+  });
+  $("fdCancel").onclick = () => $("formDialog").close();
+  $("formDialog").addEventListener("click", (e) => { if (e.target === $("formDialog")) $("formDialog").close(); });
+
+  $("addNotice").onclick = () => openForm({
+    title: "Add an important notice",
+    sub: "It stays at the top of the board, every week, until you mark where it has been recorded.",
+    fields: [
+      { name: "title", label: "Notice", required: true, placeholder: "e.g. Tell customers when cloud restarts their scoring" },
+      { name: "text", label: "The rule, in plain words", type: "textarea" },
+      { name: "issued_by", label: "From", half: true, placeholder: "e.g. Team lead" },
+      { name: "since", label: "Since", type: "date", half: true, value: isoDay(new Date()) },
+      { name: "source", label: "Source", placeholder: "e.g. Teams, 11 Sep" },
+    ],
+    save: "Pin notice",
+    onSubmit: (v) => post("/api/notices", v).then(() => toast("Notice pinned")),
+  });
+
+  $("addAway").onclick = () => openForm({
+    title: "Someone is away",
+    sub: "Shown here until the day after their last day.",
+    fields: [
+      { name: "who", label: "Who", required: true },
+      { name: "from", label: "First day away", type: "date", required: true, half: true },
+      { name: "to", label: "Last day away", type: "date", required: true, half: true },
+      { name: "note", label: "Note", placeholder: "e.g. Public holiday · cover: Alex" },
+    ],
+    onSubmit: (v) => post("/api/away", { ...v, to: v.to || v.from }).then(() => toast("Added")),
+  });
+}
+
+function retireNotice(n) {
+  openForm({
+    title: "Take this notice off the board?",
+    sub: `“${n.title}” — say where it is recorded now, so the rule isn't lost. It is kept in tasks.json as retired.`,
+    fields: [{ name: "recorded_in", label: "Recorded in", required: true,
+               placeholder: "e.g. Important Notices.md · a wiki page · the team runbook" }],
+    save: "Take off",
+    onSubmit: (v) => post(`/api/notices/${n.id}/retire`, v).then(() => toast("Notice taken off")),
+  });
+}
+
+async function removeAway(a) {
+  if (!confirm(`Remove ${a.who} (${rangeText(a)}) from Who's away?`)) return;
+  try {
+    await post("/api/away/" + a.id, null, "DELETE");
+    toast("Removed");
+    load(true);
+  } catch (err) {
+    toast("Not removed: " + err.message, true);
+  }
+}
+
+function renderPinned() {
+  // Notices
+  const nl = $("noticeList");
+  nl.textContent = "";
+  const notices = meta.notices || [];
+  if (!notices.length) {
+    const p = document.createElement("p");
+    p.className = "pin-empty";
+    p.textContent = "No active notices.";
+    nl.appendChild(p);
+  }
+  for (const n of notices) {
+    const el = document.createElement("article");
+    el.className = "notice";
+    const h = document.createElement("h3");
+    h.textContent = n.title;
+    el.appendChild(h);
+    if (n.text) {
+      const p = document.createElement("p");
+      p.textContent = n.text;
+      el.appendChild(p);
+    }
+    const m = document.createElement("div");
+    m.className = "nmeta";
+    const bits = [n.issued_by && `From ${n.issued_by}`, n.since && `since ${shortDay(n.since, true)}`, n.source]
+      .filter(Boolean);
+    const info = document.createElement("span");
+    info.textContent = bits.join(" · ");
+    m.appendChild(info);
+    const sp = document.createElement("span");
+    sp.className = "spacer";
+    m.appendChild(sp);
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "pin-btn";
+    b.textContent = "Recorded → take off";
+    b.onclick = () => retireNotice(n);
+    m.appendChild(b);
+    el.appendChild(m);
+    nl.appendChild(el);
+  }
+  $("notices").hidden = false;
+
+  // Who's away, grouped by the week it starts in.
+  const al = $("awayList");
+  al.textContent = "";
+  const away = meta.away || [];
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const todayIso = isoDay(today);
+  const monday = new Date(today); monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  const nextMon = new Date(monday); nextMon.setDate(monday.getDate() + 7);
+  const laterMon = new Date(monday); laterMon.setDate(monday.getDate() + 14);
+  const groups = [["This week", []], ["Next week", []], ["Later", []]];
+  for (const a of away) {
+    const start = parseDay(a.from);
+    groups[start < nextMon ? 0 : start < laterMon ? 1 : 2][1].push(a);
+  }
+  if (!away.length) {
+    const p = document.createElement("p");
+    p.className = "pin-empty";
+    p.textContent = "Nobody is away.";
+    al.appendChild(p);
+  }
+  for (const [label, rows] of groups) {
+    if (!rows.length) continue;
+    const g = document.createElement("div");
+    g.className = "away-group";
+    const w = document.createElement("div");
+    w.className = "when";
+    w.textContent = label;
+    const ul = document.createElement("ul");
+    for (const a of rows) {
+      const li = document.createElement("li");
+      const who = document.createElement("span");
+      who.className = "who";
+      who.textContent = a.who;
+      const dates = document.createElement("span");
+      dates.className = "dates";
+      dates.textContent = rangeText(a);
+      li.append(who, dates);
+      if (a.from <= todayIso && a.to >= todayIso) {
+        const now = document.createElement("span");
+        now.className = "now";
+        now.textContent = "out today";
+        li.appendChild(now);
+      }
+      if (a.note) {
+        const nt = document.createElement("span");
+        nt.className = "anote";
+        nt.textContent = a.note;
+        li.appendChild(nt);
+      }
+      const x = document.createElement("button");
+      x.type = "button";
+      x.title = "Remove";
+      x.textContent = "×";
+      x.onclick = () => removeAway(a);
+      li.appendChild(x);
+      ul.appendChild(li);
+    }
+    g.append(w, ul);
+    al.appendChild(g);
+  }
+  $("away").hidden = false;
 }
 
 async function load(quiet) {
@@ -900,6 +1323,8 @@ async function load(quiet) {
   code.textContent = "Home.md";
   $("sub").append(code);
 
+  renderPinned();
+
   const box = $("notes");
   box.textContent = "";
   const summary = document.createElement("summary");
@@ -928,6 +1353,8 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
 window.addEventListener("focus", () => load(true));
 
 setupNoteEditor();
+setupForm();
+setupSearch();
 load(false);
 </script>
 </body>

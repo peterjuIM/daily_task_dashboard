@@ -115,7 +115,7 @@ your notes are the same act.
 
 ```
 dashboard/homedash.py   local server + read/write API
-dashboard/sync.py       safe add / set-status / note / edit, used by the scheduled task
+dashboard/sync.py       safe add / set-status / note / edit / notice / away, used by the scheduled task
 dashboard/board.html    the board: To do, Doing, Blocked, Done, plus side lanes
 example/                a working note and tasks.json to try it against
 ```
@@ -189,6 +189,37 @@ popup editor rather than a small box on the card:
 - A counter shows the length. The server keeps at most 2,000 characters, so Save
   is disabled past that rather than letting older lines be cut off.
 - If a save fails, the popup stays open with your text in it.
+
+### Important notices and who's away
+
+Two boxes are pinned above the board. Neither is tied to the week label, so the
+weekly roll does not clear them.
+
+**Important notices** are standing rules, not tasks: "tell customers yourself
+when the cloud restarts their scoring", "route Customer X tickets through Sam
+while I'm away". Add one with **+ Add notice**, or with
+`sync.py notice add --title ... --text ... --issued-by ... --since YYYY-MM-DD`.
+A notice stays until you click **Recorded → take off**. That asks where the rule
+is now written down and refuses a blank answer, so nothing drops off the board
+unrecorded. Retired notices stay in `tasks.json` with that answer and the date.
+The scheduled skill may add a notice when someone states a standing rule in
+writing. It never takes one off.
+
+**Who's away** lists out-of-office and holidays, grouped into this week, next
+week and later. An entry shows until the day after its last day. The scheduled
+skill fills it from the calendar and from out-of-office replies
+(`sync.py away add --who ... --from ... --to ...`). **+ Add** covers anything it
+missed. Hover over a line and click **×** to remove a mistake. The week roll
+moves ended entries to `past_away`.
+
+### Search
+
+The search box above the filter chips narrows the board as you type, with no
+Enter needed. A card stays if every word you type appears somewhere on it:
+title, detail, note, tags, ticket keys or workstream. Case and word order don't
+matter. Matches are highlighted in card titles. The count beside the box says how
+many matches sit in lanes you've hidden. `/` jumps to the box, and `Esc` or `×`
+clears it. Search combines with the workstream chips and never writes anything.
 
 ### Archive
 

@@ -7,6 +7,22 @@
   "notes": [
     "Anything worth knowing about the week goes here. Holidays, who is away."
   ],
+  "notices": [
+    {
+      "id": "tell-customers-when-the-nightly-job-is-restarted",
+      "title": "Tell customers when the nightly job is restarted",
+      "text": "If the nightly job fails for any reason other than a bad input file, the customer gets no message. Support tells them and points them to the monitoring page.",
+      "issued_by": "Team lead",
+      "since": "2026-09-11",
+      "source": "Team chat, 11 Sep",
+      "added_on": "2026-09-14",
+      "recorded_in": null,
+      "retired_on": null
+    }
+  ],
+  "away": [
+    { "id": "alex-example-2026-09-14-2026-09-18", "who": "Alex Example", "from": "2026-09-14", "to": "2026-09-18", "note": "back Mon 21 · cover: Sam", "source": "calendar" }
+  ],
   "tasks": [
     {
       "key": "example-write-the-plan",

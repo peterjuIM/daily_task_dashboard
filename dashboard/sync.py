@@ -15,6 +15,17 @@ through here instead.
                                    [--detail "..."] [--due YYYY-MM-DD|none] [--add-ref LABEL=URL]
     python3 sync.py week                      # does the board cover the current week?
     python3 sync.py week --roll               # if not, move it to the current week
+    python3 sync.py notice add --title "..." --text "..." [--issued-by "..."] [--since YYYY-MM-DD]
+    python3 sync.py notice retire --id ID --recorded-in "where it is written down now"
+    python3 sync.py notice list
+    python3 sync.py away add --who "..." --from YYYY-MM-DD --to YYYY-MM-DD [--note "..."]
+    python3 sync.py away remove --id ID
+    python3 sync.py away list
+
+Important notices and who's away sit at the top of the board and are not tied
+to a week. A notice stays until someone retires it, and retiring needs
+--recorded-in: where the rule is written down now. An away-entry shows until the
+day after its last day; the week roll moves ended ones to past_away.
 
 The board is labelled with a week (tasks.json's week/week_start/week_end, and the
 "## This week — ..." heading in Home.md). Nothing moves that label on its own, so
@@ -114,7 +125,9 @@ def cmd_list(args):
     if not check["current"]:
         print(f"warning: board is labelled {check['board']} but this is {check['actual']} "
               f"— run `sync.py week --roll`", file=sys.stderr)
-    print(json.dumps({"week": payload["meta"]["week"], "week_check": check, "tasks": rows},
+    print(json.dumps({"week": payload["meta"]["week"], "week_check": check,
+                      "notices": payload["meta"]["notices"], "away": payload["meta"]["away"],
+                      "tasks": rows},
                      ensure_ascii=False, indent=2))
 
 
@@ -145,6 +158,12 @@ def cmd_week(args):
     if data.get("notes"):
         data.setdefault("past_notes", {})[old_week or "unknown"] = data["notes"]
     data["notes"] = []
+    # Away-entries that ended before the new week are history; keep them, out of sight.
+    ended = [a for a in data.get("away", []) if a["to"] < monday.isoformat()]
+    if ended:
+        data.setdefault("past_away", []).extend(ended)
+        data["away"] = [a for a in data["away"] if a not in ended]
+    # Notices are deliberately untouched: only a person retires one.
     data["week"] = label
     data["week_start"] = monday.isoformat()
     data["week_end"] = friday.isoformat()
@@ -320,6 +339,36 @@ def cmd_edit(args):
     print(f"{args.key}: " + "; ".join(changed))
 
 
+def cmd_notice(args):
+    try:
+        if args.action == "add":
+            n, new = homedash.add_notice(args.title, args.text, issued_by=args.issued_by,
+                                         since=args.since, source=args.source, notice_id=args.id)
+            print(f"{'added' if new else 'skip: already exists'}: notice {n['id']}")
+        elif args.action == "retire":
+            n, changed = homedash.retire_notice(args.id, args.recorded_in)
+            print(f"{'retired' if changed else 'unchanged: already retired'}: notice {n['id']} "
+                  f"(recorded in: {n['recorded_in']})")
+        else:
+            print(json.dumps(homedash.active_notices(homedash.read_tasks()), ensure_ascii=False, indent=2))
+    except homedash.BoardError as e:
+        sys.exit(str(e))
+
+
+def cmd_away(args):
+    try:
+        if args.action == "add":
+            a, new = homedash.add_away(args.who, args.start, args.end, note=args.note, source=args.source)
+            print(f"{'added' if new else 'skip: already exists'}: away {a['id']}")
+        elif args.action == "remove":
+            a = homedash.remove_away(args.id)
+            print(f"removed: away {a['id']}")
+        else:
+            print(json.dumps(homedash.current_away(homedash.read_tasks()), ensure_ascii=False, indent=2))
+    except homedash.BoardError as e:
+        sys.exit(str(e))
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__,
                                formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -367,6 +416,34 @@ def main():
     e.add_argument("--add-ref", action="append", metavar="LABEL=URL",
                    help="attach a link (e.g. a Jira key); repeatable")
     e.set_defaults(fn=cmd_edit)
+
+    no = sub.add_parser("notice", help="important notices pinned to the top of the board")
+    nos = no.add_subparsers(dest="action", required=True)
+    x = nos.add_parser("add", help="pin a notice (idempotent on id)")
+    x.add_argument("--title", required=True)
+    x.add_argument("--text", default="")
+    x.add_argument("--issued-by", default="")
+    x.add_argument("--since", default=None, help="YYYY-MM-DD, defaults to today")
+    x.add_argument("--source", default="", help="where it came from, e.g. 'Teams, 11 Sep'")
+    x.add_argument("--id", default=None, help="defaults to a slug of the title")
+    x = nos.add_parser("retire", help="take a notice off once it is recorded somewhere")
+    x.add_argument("--id", required=True)
+    x.add_argument("--recorded-in", required=True, help="where the rule is written down now")
+    nos.add_parser("list", help="active notices as JSON")
+    no.set_defaults(fn=cmd_notice)
+
+    aw = sub.add_parser("away", help="who is out of office, shown at the top of the board")
+    aws = aw.add_subparsers(dest="action", required=True)
+    x = aws.add_parser("add", help="record someone away (idempotent on who+dates)")
+    x.add_argument("--who", required=True)
+    x.add_argument("--from", dest="start", required=True, help="first day away, YYYY-MM-DD")
+    x.add_argument("--to", dest="end", required=True, help="last day away, YYYY-MM-DD")
+    x.add_argument("--note", default="", help="e.g. 'public holiday', 'back Mon 19'")
+    x.add_argument("--source", default="calendar")
+    x = aws.add_parser("remove", help="delete an entry added by mistake or a cancelled leave")
+    x.add_argument("--id", required=True)
+    aws.add_parser("list", help="current and upcoming entries as JSON")
+    aw.set_defaults(fn=cmd_away)
 
     args = p.parse_args()
     due = getattr(args, "due", None)      # `add` and `edit` have one

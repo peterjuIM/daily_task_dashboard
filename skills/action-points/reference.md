@@ -89,8 +89,55 @@ The board is labelled with a week, and nothing moves that label on its own.
 
 Rolling only relabels: tasks, statuses and notes stay exactly where they are,
 and last week's "worth knowing" notes are kept under `past_notes` rather than
-deleted. It is safe to run every time — on a current board it changes nothing.
-Say in the report that you rolled the week, and from which week.
+deleted. Important notices are left alone, and away-entries that ended before
+the new week move to `past_away`. It is safe to run every time — on a current
+board it changes nothing. Say in the report that you rolled the week, and from
+which week.
+
+### Who's away
+
+The top of the board lists who is out, grouped into this week, next week and
+later. It is not tied to a week: an entry shows until the day after its last
+day. Keep it filled on **every** run:
+
+```
+python3 sync.py away add --who "Full Name" --from YYYY-MM-DD --to YYYY-MM-DD --note "back Mon 19 · cover: Alex"
+python3 sync.py away list
+```
+
+- Add every all-day out-of-office, leave or public holiday in the calendar
+  window, including the user's own (their name followed by "(you)"). Add
+  out-of-office auto-replies too, using the return date they state.
+- `--to` is the **last day away**, not the return day. A calendar all-day event
+  ending at 00:00 on the 19th means the last day is the 18th.
+- A team-wide holiday is one entry ("Pune office", note "Public holiday").
+- `add` is idempotent on who + dates, so re-adding is harmless. If the dates
+  change, add the new range and say in the report that the old one may need
+  removing. Never run `away remove` yourself; the person does that from the board.
+
+### Important notices
+
+A notice is a standing rule, not a task: something to keep following until it
+is withdrawn ("tell customers yourself when cloud restarts their scoring",
+"route Customer X tickets through Sam while I'm away"). Notices sit pinned at
+the very top of the board, every week, until the person takes one off.
+
+```
+python3 sync.py notice add --title "..." --text "the rule in plain words" \
+    --issued-by "Full Name" --since YYYY-MM-DD --source "Teams, 11 Sep"
+python3 sync.py notice list
+```
+
+- Add one only when someone states a standing rule or process change in
+  writing. Quote their wording in `--text`. A one-off request is a task, not a
+  notice.
+- **Never retire a notice.** Taking one off is the person's call, made from the
+  board's "Recorded → take off" button. It requires saying where the rule is now
+  recorded (Important Notices.md, a wiki page, the team runbook), so nothing drops
+  off without being written down. Like `not_my_task`, this is never done by an
+  unattended run.
+- List the active notices in one line at the top of the report, so the person
+  sees them whether or not they open the board.
 
 `set-status --status blocked` stamps the day the task became blocked. `list`
 then reports `days_blocked`, and `stale_blocked: true` once that passes 3 days.

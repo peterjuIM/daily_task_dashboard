@@ -114,6 +114,124 @@ def set_task_fields(key, workstream=None, tags=None, detail=None, due=_UNSET, re
     return task
 
 
+# ---- Important notices and who's away ----
+#
+# Both live in tasks.json beside the tasks, and neither is tied to a week: the
+# week roll leaves notices alone and only tidies away-entries that have ended.
+#
+# A notice is a standing rule ("tell customers when cloud restarts scoring").
+# It stays at the top of the board until someone takes it off, and taking it
+# off needs a `recorded_in` — where the rule now lives (Important Notices.md, a
+# wiki page, the team runbook) — so nothing drops off the board without
+# being written down somewhere first. Retired notices are kept, not deleted.
+#
+# An away-entry is one person out for a date range, inclusive at both ends.
+# It shows from the day it is added until the day after `to`.
+
+
+class BoardError(ValueError):
+    pass
+
+
+def _slug(text):
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:48] or "item"
+
+
+def _iso(value, field):
+    try:
+        return date.fromisoformat(value).isoformat()
+    except (TypeError, ValueError):
+        raise BoardError(f"{field} must be YYYY-MM-DD, got {value!r}")
+
+
+def active_notices(data):
+    return [n for n in data.get("notices", []) if not n.get("retired_on")]
+
+
+def add_notice(title, text, issued_by="", since=None, source="", notice_id=None):
+    """Add a notice. Idempotent on id (a slug of the title by default)."""
+    title, text = (title or "").strip(), (text or "").strip()
+    if not title:
+        raise BoardError("a notice needs a title")
+    data = read_tasks()
+    notices = data.setdefault("notices", [])
+    nid = notice_id or _slug(title)
+    existing = next((n for n in notices if n["id"] == nid), None)
+    if existing:
+        return existing, False
+    notice = {
+        "id": nid,
+        "title": title,
+        "text": text,
+        "issued_by": (issued_by or "").strip(),
+        "since": _iso(since, "since") if since else date.today().isoformat(),
+        "source": (source or "").strip(),
+        "added_on": date.today().isoformat(),
+        "recorded_in": None,
+        "retired_on": None,
+    }
+    notices.append(notice)
+    write_tasks(data)
+    return notice, True
+
+
+def retire_notice(nid, recorded_in):
+    """Take a notice off the board. Refuses unless it says where it is recorded."""
+    recorded_in = (recorded_in or "").strip()
+    if not recorded_in:
+        raise BoardError("say where the notice is recorded before taking it off")
+    data = read_tasks()
+    notice = next((n for n in data.get("notices", []) if n["id"] == nid), None)
+    if notice is None:
+        raise BoardError(f"no such notice: {nid}")
+    if notice.get("retired_on"):
+        return notice, False
+    notice["recorded_in"] = recorded_in
+    notice["retired_on"] = date.today().isoformat()
+    write_tasks(data)
+    return notice, True
+
+
+def current_away(data, today=None):
+    """Away-entries that haven't ended yet, soonest first."""
+    today = (today or date.today()).isoformat()
+    rows = [a for a in data.get("away", []) if a["to"] >= today]
+    return sorted(rows, key=lambda a: (a["from"], a["who"].lower()))
+
+
+def add_away(who, start, end, note="", source=""):
+    """Record someone as away. Idempotent on (who, from, to)."""
+    who = (who or "").strip()
+    if not who:
+        raise BoardError("who is away?")
+    start, end = _iso(start, "from"), _iso(end, "to")
+    if end < start:
+        raise BoardError(f"'to' ({end}) is before 'from' ({start})")
+    data = read_tasks()
+    away = data.setdefault("away", [])
+    aid = f"{_slug(who)}-{start}-{end}"
+    existing = next((a for a in away if a["id"] == aid), None)
+    if existing:
+        return existing, False
+    entry = {"id": aid, "who": who, "from": start, "to": end,
+             "note": (note or "").strip(), "source": (source or "").strip()}
+    away.append(entry)
+    write_tasks(data)
+    return entry, True
+
+
+def remove_away(aid):
+    """Delete an away-entry — for one added by mistake, or a leave that was cancelled."""
+    data = read_tasks()
+    away = data.get("away", [])
+    entry = next((a for a in away if a["id"] == aid), None)
+    if entry is None:
+        raise BoardError(f"no such away entry: {aid}")
+    away.remove(entry)
+    write_tasks(data)
+    return entry
+
+
 def read_home():
     """Return (lines, {key: {...}}) parsed from the week section of Home.md."""
     if not HOME_MD.exists():
@@ -302,7 +420,9 @@ def build_payload():
     return {
         "tasks": tasks,
         "meta": {k: meta[k] for k in ("week", "week_start", "week_end", "generated_from", "notes")
-                 if k in meta} | {"workstreams": meta.get("workstreams", [])},
+                 if k in meta} | {"workstreams": meta.get("workstreams", []),
+                                  "notices": active_notices(meta),
+                                  "away": current_away(meta)},
         "source": str(HOME_MD),
         "missing": missing,
     }
@@ -334,6 +454,51 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(500, {"error": str(e)})
         else:
             self._json(404, {"error": "not found"})
+
+    def _body(self):
+        length = int(self.headers.get("Content-Length") or 0)
+        try:
+            body = json.loads(self.rfile.read(length) or b"{}")
+        except json.JSONDecodeError:
+            raise BoardError("invalid JSON")
+        if not isinstance(body, dict):
+            raise BoardError("expected a JSON object")
+        return body
+
+    def do_POST(self):
+        """POST /api/notices · /api/notices/<id>/retire · /api/away"""
+        path = urlparse(self.path).path
+        try:
+            body = self._body()
+            if path == "/api/notices":
+                item, _ = add_notice(str(body.get("title", ""))[:200], str(body.get("text", ""))[:2000],
+                                     issued_by=str(body.get("issued_by", ""))[:200],
+                                     since=body.get("since") or None,
+                                     source=str(body.get("source", ""))[:200])
+            elif m := re.fullmatch(r"/api/notices/([\w-]+)/retire", path):
+                item, _ = retire_notice(m.group(1), str(body.get("recorded_in", ""))[:500])
+            elif path == "/api/away":
+                item, _ = add_away(str(body.get("who", ""))[:100], body.get("from"), body.get("to"),
+                                   note=str(body.get("note", ""))[:300],
+                                   source=str(body.get("source", "board"))[:100])
+            else:
+                self._json(404, {"error": "not found"})
+                return
+        except BoardError as e:
+            self._json(400, {"error": str(e)})
+            return
+        self._json(200, item)
+
+    def do_DELETE(self):
+        """DELETE /api/away/<id>"""
+        m = re.fullmatch(r"/api/away/([\w-]+)", urlparse(self.path).path)
+        if not m:
+            self._json(404, {"error": "not found"})
+            return
+        try:
+            self._json(200, remove_away(m.group(1)))
+        except BoardError as e:
+            self._json(404, {"error": str(e)})
 
     def do_PATCH(self):
         m = re.fullmatch(r"/api/tasks/([\w-]+)", urlparse(self.path).path)
