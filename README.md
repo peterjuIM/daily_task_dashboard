@@ -174,6 +174,13 @@ order. The skill files tickets in a backlog or feature-request state under a
 `Backlog` workstream — add `"Backlog"` to that list if you want to use it, or
 `sync.py` will refuse the move.
 
+Manage that list from the **Workstreams…** chip, or with
+`sync.py workstream add|remove|list`. Removing a workstream never deletes a
+task: if any task still uses it, you pick another workstream to move them to,
+and both changes are written together. The filter chips only show workstreams
+with something on the board, so a new or emptied one (nothing left but archived
+cards) stays out of the way until it has work in it.
+
 ### Notes
 
 Click a card to expand it, then click its note to edit. The note opens in a large

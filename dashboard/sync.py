@@ -21,6 +21,9 @@ through here instead.
     python3 sync.py away add --who "..." --from YYYY-MM-DD --to YYYY-MM-DD [--note "..."]
     python3 sync.py away remove --id ID
     python3 sync.py away list
+    python3 sync.py workstream add --name "..."
+    python3 sync.py workstream remove --name "..." [--move-to "..."]   # --move-to if tasks use it
+    python3 sync.py workstream list           # each workstream with its task count
 
 Important notices and who's away sit at the top of the board and are not tied
 to a week. A notice stays until someone retires it, and retiring needs
@@ -369,6 +372,23 @@ def cmd_away(args):
         sys.exit(str(e))
 
 
+def cmd_workstream(args):
+    try:
+        if args.action == "add":
+            name, new = homedash.add_workstream(args.name)
+            print(f"{'added' if new else 'skip: already exists'}: workstream {name}")
+        elif args.action == "remove":
+            moved = homedash.remove_workstream(args.name, move_to=args.move_to)
+            print(f"removed: workstream {args.name}"
+                  + (f" ({moved} task(s) moved to {args.move_to})" if moved else ""))
+        else:
+            data = homedash.read_tasks()
+            counts = {w: sum(t["workstream"] == w for t in data["tasks"]) for w in workstreams()}
+            print(json.dumps(counts, ensure_ascii=False, indent=2))
+    except homedash.BoardError as e:
+        sys.exit(str(e))
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__,
                                formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -444,6 +464,16 @@ def main():
     x.add_argument("--id", required=True)
     aws.add_parser("list", help="current and upcoming entries as JSON")
     aw.set_defaults(fn=cmd_away)
+
+    ws = sub.add_parser("workstream", help="add or remove the workstreams the board offers")
+    wss = ws.add_subparsers(dest="action", required=True)
+    x = wss.add_parser("add", help="append a workstream (idempotent, ignoring case)")
+    x.add_argument("--name", required=True)
+    x = wss.add_parser("remove", help="drop a workstream; tasks in it need --move-to")
+    x.add_argument("--name", required=True)
+    x.add_argument("--move-to", default=None, help="another workstream to move its tasks to")
+    wss.add_parser("list", help="workstreams with their task counts, as JSON")
+    ws.set_defaults(fn=cmd_workstream)
 
     args = p.parse_args()
     due = getattr(args, "due", None)      # `add` and `edit` have one

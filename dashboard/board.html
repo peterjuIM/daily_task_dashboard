@@ -117,7 +117,11 @@
   .form-dialog h2 { margin: 0; font-size: 18px; }
   .form-dialog .fd-sub { margin: -4px 0 2px; color: var(--muted); font-size: 14px; }
   .form-dialog label { font-size: 12.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
-  .form-dialog input, .form-dialog textarea {
+  .form-dialog .ws-list { display: flex; flex-direction: column; gap: 4px; margin: 2px 0 6px; }
+  .form-dialog .ws-row { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border: 1px solid var(--border); border-left: 4px solid var(--ws); border-radius: 8px; font-size: 15px; }
+  .form-dialog .ws-row .n { color: var(--muted); font-size: 13.5px; margin-left: auto; }
+  .form-dialog .ws-row button { font-size: 13px; padding: 3px 10px; }
+  .form-dialog input, .form-dialog textarea, .form-dialog select {
     width: 100%; font: inherit; font-size: 15px; color: var(--text); background: var(--surface-2);
     border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; margin-top: 3px;
   }
@@ -612,7 +616,10 @@ function renderFilters() {
   const box = $("filters");
   box.hidden = false;
   box.textContent = "";
-  const names = ["all", ...Object.keys(WS).filter((w) => tasks.some((t) => t.workstream === w))];
+  // A workstream with nothing on the board (no tasks, or only archived ones) gets
+  // no chip. It still exists — manage it under "Workstreams…".
+  const live = (w) => tasks.some((t) => t.workstream === w && !t.archived);
+  const names = ["all", ...Object.keys(WS).filter((w) => w === filterWs || live(w))];
   for (const name of names) {
     const b = document.createElement("button");
     b.className = "chip";
@@ -650,6 +657,12 @@ function renderFilters() {
   ar.setAttribute("aria-pressed", String(showArchive));
   ar.onclick = () => { showArchive = !showArchive; render(); };
   box.appendChild(ar);
+
+  const ws = document.createElement("button");
+  ws.className = "chip";
+  ws.textContent = "Workstreams…";
+  ws.onclick = manageWorkstreams;
+  box.appendChild(ws);
 }
 
 function card(t) {
@@ -1090,11 +1103,14 @@ function openForm({ title, sub, fields, save, onSubmit }) {
   box.textContent = "";
   let row = null;
   for (const f of fields) {
+    if (f.node) { row = null; box.appendChild(f.node); continue; }   // ready-made content
     const wrap = document.createElement("div");
     const label = document.createElement("label");
     label.textContent = f.label;
-    const input = document.createElement(f.type === "textarea" ? "textarea" : "input");
-    if (f.type !== "textarea") input.type = f.type || "text";
+    const tag = f.type === "textarea" || f.type === "select" ? f.type : "input";
+    const input = document.createElement(tag);
+    if (tag === "input") input.type = f.type || "text";
+    for (const o of f.options || []) input.appendChild(new Option(o, o));
     input.name = f.name;
     input.autocomplete = "off";               // never let the browser fill "recorded in" for you
     input.required = !!f.required;
@@ -1113,7 +1129,7 @@ function openForm({ title, sub, fields, save, onSubmit }) {
   }
   fdSubmit = onSubmit;
   $("formDialog").showModal();
-  const first = box.querySelector("input, textarea");
+  const first = box.querySelector("input, textarea, select");
   if (first) first.focus();
 }
 
@@ -1171,6 +1187,58 @@ function retireNotice(n) {
                placeholder: "e.g. Important Notices.md · a wiki page · the team runbook" }],
     save: "Take off",
     onSubmit: (v) => post(`/api/notices/${n.id}/retire`, v).then(() => toast("Notice taken off")),
+  });
+}
+
+// Workstreams live in tasks.json. Adding one appends it (and its colour) to the
+// list; removing one moves any tasks still in it to another workstream first.
+function manageWorkstreams() {
+  const list = document.createElement("div");
+  list.className = "ws-list";
+  for (const name of Object.keys(WS)) {
+    const n = tasks.filter((t) => t.workstream === name).length;
+    const row = document.createElement("div");
+    row.className = "ws-row";
+    row.style.setProperty("--ws", WS[name]);
+    row.append(name);
+    const count = document.createElement("span");
+    count.className = "n";
+    count.textContent = n ? `${n} task${n === 1 ? "" : "s"}` : "empty";
+    const rm = document.createElement("button");
+    rm.type = "button";
+    rm.textContent = "Remove";
+    rm.disabled = Object.keys(WS).length < 2 && n > 0;   // nowhere to move its tasks
+    rm.onclick = () => removeWorkstream(name, n);
+    row.append(count, rm);
+    list.appendChild(row);
+  }
+  openForm({
+    title: "Workstreams",
+    sub: "Chips only show workstreams with something on the board. Removing one never deletes a task.",
+    fields: [
+      { node: list },
+      { name: "name", label: "Add a workstream", required: true, placeholder: "e.g. Luminor - Report" },
+    ],
+    save: "Add",
+    onSubmit: (v) => post("/api/workstreams", v)
+      .then((r) => toast(r.added ? "Added " + r.name : r.name + " already exists")),
+  });
+}
+
+function removeWorkstream(name, n) {
+  const others = Object.keys(WS).filter((w) => w !== name);
+  openForm({
+    title: `Remove ${name}?`,
+    sub: n
+      ? `Its ${n} task${n === 1 ? "" : "s"} (archived ones included) move to the workstream you pick.`
+      : "Nothing is in it, so nothing else changes.",
+    fields: n ? [{ name: "move_to", label: "Move its tasks to", type: "select", options: others, required: true }] : [],
+    save: "Remove",
+    onSubmit: (v) => post("/api/workstreams/remove", { name, move_to: v.move_to })
+      .then((r) => {
+        if (filterWs === name) filterWs = "all";
+        toast(r.moved ? `Removed ${name} · ${r.moved} moved to ${v.move_to}` : "Removed " + name);
+      }),
   });
 }
 

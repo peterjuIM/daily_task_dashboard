@@ -114,6 +114,53 @@ def set_task_fields(key, workstream=None, tags=None, detail=None, due=_UNSET, re
     return task
 
 
+# ---- Workstreams ----
+#
+# The `workstreams` list in tasks.json is what the board offers and colours, in
+# order. Removing one never deletes a task: a workstream still in use can only go
+# if its tasks are moved to another one in the same write.
+
+
+def add_workstream(name):
+    """Append a workstream. Idempotent, ignoring case."""
+    name = " ".join((name or "").split())
+    if not name:
+        raise BoardError("a workstream needs a name")
+    if len(name) > 60:
+        raise BoardError("keep a workstream name under 60 characters")
+    data = read_tasks()
+    listed = data.setdefault("workstreams", [])
+    existing = next((w for w in listed if w.lower() == name.lower()), None)
+    if existing:
+        return existing, False
+    listed.append(name)
+    write_tasks(data)
+    return name, True
+
+
+def remove_workstream(name, move_to=None):
+    """Drop a workstream from the list, moving its tasks to `move_to` first.
+
+    Refuses if tasks still use it and no `move_to` is given. Returns how many
+    tasks were moved.
+    """
+    data = read_tasks()
+    listed = data.get("workstreams") or []
+    if name not in listed:
+        raise BoardError(f"no such workstream: {name}")
+    using = [t for t in data["tasks"] if t["workstream"] == name]
+    if using:
+        if not move_to:
+            raise BoardError(f"{len(using)} task(s) still in {name} — choose where to move them")
+        if move_to == name or move_to not in listed:
+            raise BoardError(f"move_to must be another workstream, got {move_to!r}")
+        for t in using:
+            t["workstream"] = move_to
+    listed.remove(name)
+    write_tasks(data)
+    return len(using)
+
+
 # ---- Important notices and who's away ----
 #
 # Both live in tasks.json beside the tasks, and neither is tied to a week: the
@@ -466,7 +513,7 @@ class Handler(BaseHTTPRequestHandler):
         return body
 
     def do_POST(self):
-        """POST /api/notices · /api/notices/<id>/retire · /api/away"""
+        """POST /api/notices · /api/notices/<id>/retire · /api/away · /api/workstreams[/remove]"""
         path = urlparse(self.path).path
         try:
             body = self._body()
@@ -481,6 +528,14 @@ class Handler(BaseHTTPRequestHandler):
                 item, _ = add_away(str(body.get("who", ""))[:100], body.get("from"), body.get("to"),
                                    note=str(body.get("note", ""))[:300],
                                    source=str(body.get("source", "board"))[:100])
+            elif path == "/api/workstreams":
+                name, added = add_workstream(str(body.get("name", "")))
+                item = {"name": name, "added": added}
+            elif path == "/api/workstreams/remove":
+                # Names carry spaces and slashes ("Support / Ops"), so they go in the body.
+                name = str(body.get("name", ""))
+                item = {"name": name,
+                        "moved": remove_workstream(name, move_to=body.get("move_to") or None)}
             else:
                 self._json(404, {"error": "not found"})
                 return
